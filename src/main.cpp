@@ -28,10 +28,10 @@ int main(int argc, char* argv[]) {
     auto tokens = tk.tokenize();
 
     Parser p(std::move(tokens));
-    auto root = p.parse();
+    auto root = p.parseProg();
 
     if (!root.has_value()) {
-        std::cerr << "Could not parse" << std::endl;
+        std::cerr << "Invalid program" << std::endl;
         exit(1);
     }
 
@@ -39,7 +39,7 @@ int main(int argc, char* argv[]) {
 
     {
         std::ofstream file("out.asm");
-        file << g.generate();
+        file << g.genProg();
     }
 
     system("nasm -felf64 out.asm");

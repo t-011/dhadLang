@@ -7,11 +7,14 @@
 
 enum class TokenType {
     ERROR = 0,
-    VAR,
-    ASSIGN,
     INT_LIT,
     SEMI,
-    EXIT
+    EXIT,
+    OPEN_PAREN,
+    CLOSE_PAREN,
+    IDENT,
+    LET,
+    ASSIGN
 };
 
 struct Token {
@@ -54,8 +57,12 @@ public:
                 --i; // while loop, off by one
                 if (buffer == "exit") {
                     tokens.push_back({TokenType::EXIT, "exit"});
-                } else {
-                    tokens.push_back({TokenType::VAR, buffer});
+                }
+                else if (buffer == "let") {
+                    tokens.push_back({TokenType::LET, "let"});
+                } 
+                else {
+                    tokens.push_back({TokenType::IDENT, buffer});
                 }
                 buffer.clear();
                 continue;
@@ -86,6 +93,16 @@ public:
 
             if (curr == ';') {
                 tokens.push_back({TokenType::SEMI, ";"});
+                continue;
+            }
+
+            if (curr == '(') {
+                tokens.push_back({TokenType::OPEN_PAREN, "("});
+                continue;
+            }
+
+            if (curr == ')') {
+                tokens.push_back({TokenType::CLOSE_PAREN, ")"});
                 continue;
             }
 
