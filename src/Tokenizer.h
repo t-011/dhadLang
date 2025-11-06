@@ -14,7 +14,9 @@ enum class TokenType {
     CLOSE_PAREN,
     IDENT,
     LET,
-    ASSIGN
+    ASSIGN,
+    PLUS,
+    MULTI
 };
 
 struct Token {
@@ -103,6 +105,11 @@ public:
 
             if (curr == ')') {
                 tokens.push_back({TokenType::CLOSE_PAREN, ")"});
+                continue;
+            }
+
+            if (curr == '+') {
+                tokens.push_back({TokenType::PLUS, "+"});
                 continue;
             }
 
