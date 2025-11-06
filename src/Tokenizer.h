@@ -16,7 +16,7 @@ enum class TokenType {
     LET,
     ASSIGN,
     PLUS,
-    MULTI
+    MULT
 };
 
 struct Token {
@@ -110,6 +110,11 @@ public:
 
             if (curr == '+') {
                 tokens.push_back({TokenType::PLUS, "+"});
+                continue;
+            }
+
+            if (curr == '*') {
+                tokens.push_back({TokenType::MULT, "*"});
                 continue;
             }
 

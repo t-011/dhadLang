@@ -1,2 +1,2 @@
-let x = 8 + 2;
+let x = 2 * 5;
 exit(x);

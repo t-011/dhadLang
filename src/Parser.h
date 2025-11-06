@@ -31,13 +31,13 @@ struct BinExprAdd {
     NodeExpr* rhs;
 };
 
-struct BinExprMulti {
+struct BinExprMult {
     NodeExpr* lhs;
     NodeExpr* rhs;
 };
 
 struct BinExpr {
-    std::variant<BinExprAdd*, BinExprMulti*> var;
+    std::variant<BinExprAdd*, BinExprMult*> var;
 };
 
 struct NodeStmtExit {
@@ -116,25 +116,43 @@ public:
     }
 
 
-    std::optional<NodeExpr*> parseExpr() {
+    std::optional<NodeExpr*> parseExpr(int minPrec = 0) {
 
-        // auto lhs = parsePrimary();
-        // if (!lhs) return {};
+        NodeExpr* lhs = m_allocator.alloc<NodeExpr>();
 
-        // while (peek() && peek()->type == TokenType::PLUS) {
-        //     auto binOperator = consume();
+        auto term = parseTerm();
+        if (!term) return {};
+        lhs->var = term.value();
 
-        //     auto rhs = parsePrimary();
-        // }
+        while (peek() && precedence(peek()->type) >= minPrec) {
+            auto op = consume();
+            auto rhs = parseExpr(precedence(op.type) + 1);
+            if (!rhs) {
+                std::cerr << "Expected RHS" << std::endl;
+                exit(1);
+            }
+
+            auto binExpr = m_allocator.alloc<BinExpr>();
+            auto expr = m_allocator.alloc<NodeExpr>();
+
+            if (op.type == TokenType::PLUS) {
+                auto exprAdd = m_allocator.alloc<BinExprAdd>();
+                exprAdd->lhs = lhs;
+                exprAdd->rhs = rhs.value();
+                binExpr->var = exprAdd;
+            }
+            else if (op.type == TokenType::MULT) {
+                auto exprMult = m_allocator.alloc<BinExprMult>();
+                exprMult->lhs = lhs;
+                exprMult->rhs = rhs.value();
+                binExpr->var = exprMult;
+            }
+
+            expr->var = binExpr;
+            lhs = expr;
+        }
         
-
-        // else if (auto binExpr = parseBinExpr()) {
-        //     NodeExpr* expr = m_allocator.alloc<NodeExpr>();
-        //     expr->var = binExpr.value();
-        //     return expr;
-        // }
-
-        // else return {};
+        return lhs;
     }
 
     std::optional<NodeStmt> parseStmt() {
@@ -251,6 +269,20 @@ private:
 
     Token consume() {
         return m_tokens.at(m_pos++);
+    }
+
+    int precedence(TokenType tk) {
+        
+        switch(tk) {
+            case TokenType::PLUS :
+                return 1;
+            
+            case TokenType::MULT :
+                return 2;
+            
+            default:
+                return -1;
+        }
     }
 
 private:
