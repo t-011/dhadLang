@@ -16,12 +16,17 @@ struct NodeTermIdent {
     Token ident;
 };
 
-struct NodeTerm {
-    std::variant<NodeTermIntLit*, NodeTermIdent*> var;
+struct NodeExpr;
+struct NodeTermParen {
+    NodeExpr* expr;
 };
 
-struct BinExpr;
+struct NodeTerm {
+    std::variant<NodeTermIntLit*, NodeTermIdent*, NodeTermParen*> var;
+};
 
+
+struct BinExpr;
 struct NodeExpr {
     std::variant<NodeTerm*, BinExpr*> var;
 };
@@ -31,13 +36,28 @@ struct BinExprAdd {
     NodeExpr* rhs;
 };
 
+struct BinExprSub {
+    NodeExpr* lhs;
+    NodeExpr* rhs;
+};
+
 struct BinExprMult {
     NodeExpr* lhs;
     NodeExpr* rhs;
 };
 
+struct BinExprDiv {
+    NodeExpr* lhs;
+    NodeExpr* rhs;
+};
+
+struct BinExprMod {
+    NodeExpr* lhs;
+    NodeExpr* rhs;
+};
+
 struct BinExpr {
-    std::variant<BinExprAdd*, BinExprMult*> var;
+    std::variant<BinExprAdd*, BinExprSub*, BinExprDiv*, BinExprMult*, BinExprMod*> var;
 };
 
 struct NodeStmtExit {
@@ -65,33 +85,6 @@ public:
         m_allocator(1024 * 1024 * 4) // 4mb
         {}
 
-    std::optional<BinExpr*> parseBinExpr() {
-
-        if (peek().has_value() && (peek().value().type == TokenType::INT_LIT || peek().value().type == TokenType::IDENT)
-            && peek(1).has_value() && peek(1).value().type == TokenType::PLUS
-            && peek(2).has_value() && (peek(2).value().type == TokenType::INT_LIT || peek(2).value().type == TokenType::IDENT)) {
-            
-            BinExpr* binExpr = m_allocator.alloc<BinExpr>();
-            BinExprAdd* binExprAdd = m_allocator.alloc<BinExprAdd>();
-
-            if (auto lhsExpr = parseExpr()){
-                binExprAdd->lhs = lhsExpr.value();
-            }
-
-            consume(); //consume '+'
-
-            if (auto rhsExpr = parseExpr()){
-                binExprAdd->rhs = rhsExpr.value();
-            }
-
-            binExpr->var = binExprAdd;
-
-            return binExpr;
-        }
-
-        else return {};
-    }
-
     std::optional<NodeTerm*> parseTerm() {
 
         if (peek().has_value() && peek().value().type == TokenType::INT_LIT) {
@@ -109,6 +102,29 @@ public:
 
             NodeTerm* term = m_allocator.alloc<NodeTerm>();
             term->var = termIdent;
+            return term;
+        }
+
+        else if (peek().has_value() && peek().value().type == TokenType::OPEN_PAREN) {
+            consume();
+            auto expr = parseExpr();
+            if (!expr) {
+                std::cerr << "Expected expression" << std::endl;
+                exit(1);
+            }
+            if (peek().has_value() && peek().value().type == TokenType::CLOSE_PAREN) {
+                consume();
+            }
+            else {
+                std::cerr << "Expected ')'" << std::endl;
+                exit(1);
+            }
+
+            auto termParen = m_allocator.alloc<NodeTermParen>();
+            termParen->expr = expr.value();
+            auto term = m_allocator.alloc<NodeTerm>();
+            term->var = termParen;
+
             return term;
         }
 
@@ -141,11 +157,29 @@ public:
                 exprAdd->rhs = rhs.value();
                 binExpr->var = exprAdd;
             }
+            else if (op.type == TokenType::SUB) {
+                auto exprSub = m_allocator.alloc<BinExprSub>();
+                exprSub->lhs = lhs;
+                exprSub->rhs = rhs.value();
+                binExpr->var = exprSub;
+            }
             else if (op.type == TokenType::MULT) {
                 auto exprMult = m_allocator.alloc<BinExprMult>();
                 exprMult->lhs = lhs;
                 exprMult->rhs = rhs.value();
                 binExpr->var = exprMult;
+            }
+            else if (op.type == TokenType::DIV) {
+                auto exprDiv = m_allocator.alloc<BinExprDiv>();
+                exprDiv->lhs = lhs;
+                exprDiv->rhs = rhs.value();
+                binExpr->var = exprDiv;
+            }
+            else if (op.type == TokenType::MOD) {
+                auto exprMod = m_allocator.alloc<BinExprMod>();
+                exprMod->lhs = lhs;
+                exprMod->rhs = rhs.value();
+                binExpr->var = exprMod;
             }
 
             expr->var = binExpr;
@@ -276,10 +310,19 @@ private:
         switch(tk) {
             case TokenType::PLUS :
                 return 1;
+
+            case TokenType::SUB :
+                return 1;
             
             case TokenType::MULT :
                 return 2;
+
+            case TokenType::DIV :
+                return 2;
             
+            case TokenType::MOD :
+                return 2;
+
             default:
                 return -1;
         }

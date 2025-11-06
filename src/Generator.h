@@ -16,12 +16,12 @@ public:
 
         struct TermVisitor {
             Generator* gen;
-            void operator()(const NodeTermIntLit* intLit) {
+            void operator()(const NodeTermIntLit* intLit) const {
                 gen->m_output << "   mov rax, " << intLit->int_lit.val << "\n";
                 gen->push("rax");
             }
 
-            void operator()(const NodeTermIdent* ident) {
+            void operator()(const NodeTermIdent* ident) const {
                 if (!gen->m_vars.contains(ident->ident.val)) {
                     std::cerr << "Undeclared Identifier: " << ident->ident.val << std::endl;
                     exit(1);
@@ -30,6 +30,10 @@ public:
                 std::stringstream offset;
                 offset << "QWORD [rsp + " << (gen->m_stackSize - var.m_stackLoc) * 8 << "]";
                 gen->push(offset.str());
+            }
+
+            void operator()(const NodeTermParen* termParen) const {
+                gen->genExpr(termParen->expr);
             }
         };
 
@@ -45,10 +49,22 @@ public:
                 gen->genExpr(exprAdd->lhs);
                 gen->genExpr(exprAdd->rhs);
 
-                gen->pop("rax");
                 gen->pop("rbx");
+                gen->pop("rax");
 
                 gen->m_output << "   add rax, rbx\n";
+                
+                gen->push("rax");
+            }
+
+            void operator()(const BinExprSub* exprSub) {
+                gen->genExpr(exprSub->lhs);
+                gen->genExpr(exprSub->rhs);
+
+                gen->pop("rbx");
+                gen->pop("rax");
+
+                gen->m_output << "   sub rax, rbx\n";
                 
                 gen->push("rax");
             }
@@ -57,12 +73,37 @@ public:
                 gen->genExpr(exprMulti->lhs);
                 gen->genExpr(exprMulti->rhs);
 
-                gen->pop("rax");
                 gen->pop("rbx");
+                gen->pop("rax");
 
                 gen->m_output << "   imul rax, rbx\n";
                 
                 gen->push("rax");
+            }
+
+            void operator()(const BinExprDiv* exprDiv) {
+                gen->genExpr(exprDiv->lhs);
+                gen->genExpr(exprDiv->rhs);
+
+                gen->pop("rbx");
+                gen->pop("rax");
+
+                gen->m_output << "   cqo\n";
+                gen->m_output << "   idiv rbx\n";
+                
+                gen->push("rax");
+            }
+
+            void operator()(const BinExprMod* exprMod) {
+                gen->genExpr(exprMod->lhs);
+                gen->genExpr(exprMod->rhs);
+
+                gen->pop("rbx");
+                gen->pop("rax");
+
+                gen->m_output << "   idiv rbx\n";
+                
+                gen->push("rdx");
             }
         };
 

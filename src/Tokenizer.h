@@ -16,7 +16,10 @@ enum class TokenType {
     LET,
     ASSIGN,
     PLUS,
-    MULT
+    SUB,
+    MULT,
+    DIV,
+    MOD
 };
 
 struct Token {
@@ -115,6 +118,21 @@ public:
 
             if (curr == '*') {
                 tokens.push_back({TokenType::MULT, "*"});
+                continue;
+            }
+
+            if (curr == '-') {
+                tokens.push_back({TokenType::SUB, "-"});
+                continue;
+            }
+
+            if (curr == '/') {
+                tokens.push_back({TokenType::DIV, "/"});
+                continue;
+            }
+
+            if (curr == '%') {
+                tokens.push_back({TokenType::MOD, "%"});
                 continue;
             }
 
