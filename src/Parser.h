@@ -69,12 +69,17 @@ struct NodeStmtLet {
     NodeExpr* expr;
 };
 
+struct NodeStmt;
+struct NodeStmtScope {
+    std::vector<NodeStmt*> stmts;
+};
+
 struct NodeStmt {
-    std::variant<NodeStmtExit*, NodeStmtLet*> var;
+    std::variant<NodeStmtExit*, NodeStmtLet*, NodeStmtScope*> var;
 };
 
 struct NodeProg {
-    std::vector<NodeStmt> stmts;
+    std::vector<NodeStmt*> stmts;
 };
 
 class Parser {
@@ -189,7 +194,7 @@ public:
         return lhs;
     }
 
-    std::optional<NodeStmt> parseStmt() {
+    std::optional<NodeStmt*> parseStmt() {
 
         if (peek().has_value() && peek().value().type == TokenType::EXIT) {
             consume();
@@ -226,10 +231,12 @@ public:
                 std::cerr << "Expected ';'" << std::endl;
                 exit(1);
             }
-            return NodeStmt{stmtExit};
+            NodeStmt* stmt = m_allocator.alloc<NodeStmt>();
+            stmt->var = stmtExit;
+            return stmt;
         }
 
-        if (peek().has_value() && peek().value().type == TokenType::LET) {
+        else if (peek().has_value() && peek().value().type == TokenType::LET) {
             consume();
 
             NodeStmtLet* stmtLet = m_allocator.alloc<NodeStmtLet>();
@@ -265,7 +272,35 @@ public:
                 exit(1);
             }
 
-            return NodeStmt{stmtLet};
+            NodeStmt* stmt = m_allocator.alloc<NodeStmt>();
+            stmt->var = stmtLet;
+            return stmt;
+        }
+
+        else if (peek().has_value() && peek().value().type == TokenType::OPEN_CURLY) {
+            consume();
+
+            NodeStmtScope* stmtScope = m_allocator.alloc<NodeStmtScope>();
+
+            while (peek().has_value() && peek().value().type != TokenType::CLOSE_CURLY) {
+                if (auto stmt = parseStmt()) {
+                    stmtScope->stmts.push_back(stmt.value());
+                }
+                else {
+                    std::cerr << "Invalid statement" << std::endl;
+                    exit(1);
+                }
+            }
+
+            if (!peek().has_value()) {
+                std::cerr << "Expected '}'" << std::endl;
+                exit(1);
+            }
+            consume(); //'}'
+
+            NodeStmt* stmt = m_allocator.alloc<NodeStmt>();
+            stmt->var = stmtScope;
+            return stmt;
         }
 
         else return {};

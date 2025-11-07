@@ -28,14 +28,14 @@ int main(int argc, char* argv[]) {
     auto tokens = tk.tokenize();
 
     Parser p(std::move(tokens));
-    auto root = p.parseProg();
+    auto prog = p.parseProg();
 
-    if (!root.has_value()) {
+    if (!prog.has_value()) {
         std::cerr << "Invalid program" << std::endl;
         exit(1);
     }
 
-    Generator g(root.value());
+    Generator g(prog.value());
 
     {
         std::ofstream file("out.asm");

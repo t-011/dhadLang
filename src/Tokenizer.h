@@ -12,6 +12,8 @@ enum class TokenType {
     EXIT,
     OPEN_PAREN,
     CLOSE_PAREN,
+    OPEN_CURLY,
+    CLOSE_CURLY,
     IDENT,
     LET,
     ASSIGN,
@@ -47,7 +49,7 @@ public:
                 continue;
             }
 
-            if (isalpha(curr)) {
+            else if (isalpha(curr)) {
                 while (i < m_srcLen && isalnum(m_src[i])) {
                     buffer.push_back(m_src[i]);
                     ++i;
@@ -73,7 +75,7 @@ public:
                 continue;
             }
 
-            if (isdigit(curr)) {
+            else if (isdigit(curr)) {
                 while (i < m_srcLen && isdigit(m_src[i])) {
                     buffer.push_back(m_src[i]);
                     ++i;
@@ -91,54 +93,69 @@ public:
                 continue;
             }
 
-            if (curr == '=') {
+            else if (curr == '=') {
                 tokens.push_back({TokenType::ASSIGN, "="});
                 continue;
             }
 
-            if (curr == ';') {
+            else if (curr == ';') {
                 tokens.push_back({TokenType::SEMI, ";"});
                 continue;
             }
 
-            if (curr == '(') {
+            else if (curr == '(') {
                 tokens.push_back({TokenType::OPEN_PAREN, "("});
                 continue;
             }
 
-            if (curr == ')') {
+            else if (curr == ')') {
                 tokens.push_back({TokenType::CLOSE_PAREN, ")"});
                 continue;
             }
 
-            if (curr == '+') {
+            else if (curr == '{') {
+                tokens.push_back({TokenType::OPEN_CURLY, "{"});
+                continue;
+            }
+
+            else if (curr == '}') {
+                tokens.push_back({TokenType::CLOSE_CURLY, "}"});
+                continue;
+            }
+
+            else if (curr == '+') {
                 tokens.push_back({TokenType::PLUS, "+"});
                 continue;
             }
 
-            if (curr == '*') {
+            else if (curr == '*') {
                 tokens.push_back({TokenType::MULT, "*"});
                 continue;
             }
 
-            if (curr == '-') {
+            else if (curr == '-') {
                 tokens.push_back({TokenType::SUB, "-"});
                 continue;
             }
 
-            if (curr == '/') {
+            else if (curr == '/') {
                 tokens.push_back({TokenType::DIV, "/"});
                 continue;
             }
 
-            if (curr == '%') {
+            else if (curr == '%') {
                 tokens.push_back({TokenType::MOD, "%"});
                 continue;
             }
 
+            else {
+                std::cerr << "Invalid Syntax" << std::endl;
+                exit(1);
+            }
+
         }
 
-        return (!tokens.empty() && tokens.back().type == TokenType::SEMI) ? tokens : std::vector<Token>{};
+        return tokens;
     }
 
 private:

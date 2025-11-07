@@ -151,6 +151,16 @@ public:
                 gen->m_vars.insert({stmtLet->ident.val, Var{ .m_stackLoc = gen->m_stackSize}});
 
             }
+
+            void operator()(const NodeStmtScope* stmtScope) {
+                gen->scopeBegin();
+
+                for (const NodeStmt* stmt : stmtScope->stmts) {
+                    gen->genStmt(*stmt);
+                }
+
+                gen->scopeEnd();
+            }
         };
 
         StmtVisitor visitor{this};
@@ -161,8 +171,8 @@ public:
 
         m_output << "global _start\n_start:\n";
 
-        for (const NodeStmt& stmt : m_prog.stmts) {
-            genStmt(stmt);
+        for (const NodeStmt* stmt : m_prog.stmts) {
+            genStmt(*stmt);
         }
 
         m_output << "   mov rax, 60\n";
@@ -184,6 +194,17 @@ private:
         m_stackSize--;
     }
 
+    void scopeBegin() {
+        m_vars.push_scope();
+    }
+
+    void scopeEnd() {
+        size_t scopeSize = m_vars.back().size();
+        m_vars.pop_scope();
+        m_output << "   add rsp, " << (scopeSize * 8) << "\n";
+        m_stackSize -= scopeSize;
+    }
+
 
 private:
 
@@ -191,9 +212,43 @@ private:
         size_t m_stackLoc;
     };
 
+    struct ScopeStack {
+        std::vector<std::unordered_map<std::string, Var>> scopes{1};
+
+        void push_scope() { scopes.push_back({}); }
+        void pop_scope() { scopes.pop_back(); }
+        std::unordered_map<std::string, Var>& back() { return scopes.back(); }
+        
+        void insert(const std::pair<std::string, Var>& pair) {
+            scopes.back().insert(pair);
+        }
+
+        const bool contains(const std::string& val) const {
+
+            for (auto it = scopes.rbegin(); it != scopes.rend(); ++it) {
+                if (it->contains(val)) {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        const Var& at(const std::string& val) const {
+
+            for (auto it = scopes.rbegin(); it != scopes.rend(); ++it) {
+                if (it->contains(val)) {
+                    return it->at(val);
+                }
+            }
+
+            throw std::out_of_range("Variable not found");
+        }
+};
+
 
     const NodeProg m_prog;
     std::stringstream m_output;
     size_t m_stackSize = 0;
-    std::unordered_map<std::string, Var> m_vars{};
+    ScopeStack m_vars{};
 };
