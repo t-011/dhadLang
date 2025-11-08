@@ -1,10 +1,6 @@
-let x = 3;
-if (0) {
-    exit(69);
-}
-elif (0) {
-    exit(90);
-}
-else {
-    exit(x);
-}
+let x = 1;
+let y = x +5;
+x = x * 4;
+
+y = 3;
+exit(x);

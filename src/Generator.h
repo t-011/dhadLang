@@ -191,7 +191,16 @@ public:
                 }
                 gen->genExpr(stmtLet->expr);
                 gen->m_vars.insert({stmtLet->ident.val, Var{ .m_stackLoc = gen->m_stackSize}});
+            }
 
+            void operator()(const NodeStmtAssign* stmtAssign) {
+
+                if (!gen->m_vars.contains(stmtAssign->ident.val)) {
+                    std::cerr << "Identifier not declared: " << stmtAssign->ident.val << std::endl;
+                    exit(1);
+                }
+                gen->genExpr(stmtAssign->expr);
+                gen->m_vars.at(stmtAssign->ident.val) = Var{ .m_stackLoc = gen->m_stackSize };
             }
 
             void operator()(const NodeScope* stmtScope) {
@@ -297,7 +306,7 @@ private:
             return false;
         }
 
-        const Var& at(const std::string& val) const {
+        Var& at(const std::string& val) {
 
             for (auto it = scopes.rbegin(); it != scopes.rend(); ++it) {
                 if (it->contains(val)) {

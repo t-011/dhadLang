@@ -333,9 +333,26 @@ public:
         }
 
         else if (peek().has_value() && peek().value().type == TokenType::IDENT && 
-                 peek().has_value() && peek().value().type == TokenType::EQUAL) {
+                 peek(1).has_value() && peek(1).value().type == TokenType::EQUAL) {
 
-                
+            auto stmtAssign = m_allocator.alloc<NodeStmtAssign>();
+            stmtAssign->ident = consume(); consume(); // '='
+
+            if (auto expr = parseExpr()) {
+                stmtAssign->expr = expr.value();
+            }
+
+            if (peek().has_value() && peek().value().type == TokenType::SEMI) {
+                consume();
+            }
+            else {
+                std::cerr << "Expected ';' instead of: " << peek().value().val << std::endl;
+                exit(1);
+            }
+
+            NodeStmt* stmt = m_allocator.alloc<NodeStmt>();
+            stmt->var = stmtAssign;
+            return stmt;
         }
 
         else if (peek().has_value() && peek().value().type == TokenType::OPEN_CURLY) {
