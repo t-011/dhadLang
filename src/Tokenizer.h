@@ -16,13 +16,15 @@ enum class TokenType {
     CLOSE_CURLY,
     IDENT,
     LET,
-    ASSIGN,
+    EQUAL,
     PLUS,
     SUB,
     MULT,
     DIV,
     MOD,
-    IF_
+    IF_,
+    ELIF,
+    ELSE_
 };
 
 struct Token {
@@ -71,7 +73,13 @@ public:
                 }
                 else if (buffer == "if") {
                     tokens.push_back({TokenType::IF_, "if"});
-                } 
+                }
+                else if (buffer == "elif") { 
+                    tokens.push_back({TokenType::ELIF, "elif"});
+                }
+                else if (buffer == "else") { 
+                    tokens.push_back({TokenType::ELSE_, "else"});
+                }
                 else {
                     tokens.push_back({TokenType::IDENT, buffer});
                 }
@@ -98,7 +106,7 @@ public:
             }
 
             else if (curr == '=') {
-                tokens.push_back({TokenType::ASSIGN, "="});
+                tokens.push_back({TokenType::EQUAL, "="});
                 continue;
             }
 

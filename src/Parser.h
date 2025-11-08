@@ -74,13 +74,34 @@ struct NodeScope {
     std::vector<NodeStmt*> stmts;
 };
 
-struct NodeStmtIf {
+struct NodeIfPred;
+struct NodeIfPredElif {
     NodeExpr* expr;
+    NodeScope* scope;
+    std::optional<NodeIfPred*> pred;
+};
+
+struct NodeIfPredElse {
     NodeScope* scope;
 };
 
+struct NodeIfPred {
+    std::variant<NodeIfPredElif*, NodeIfPredElse*> var;
+};
+
+struct NodeStmtIf {
+    NodeExpr* expr;
+    NodeScope* scope;
+    std::optional<NodeIfPred*> pred;
+};
+
+struct NodeStmtAssign {
+    Token ident;
+    NodeExpr* expr;
+};
+
 struct NodeStmt {
-    std::variant<NodeStmtExit*, NodeStmtLet*, NodeScope*, NodeStmtIf*> var;
+    std::variant<NodeStmtExit*, NodeStmtLet*, NodeScope*, NodeStmtIf*, NodeStmtAssign*> var;
 };
 
 struct NodeProg {
@@ -282,7 +303,7 @@ public:
                 exit(1);
             }
 
-            if (peek().has_value() && peek().value().type == TokenType::ASSIGN) {
+            if (peek().has_value() && peek().value().type == TokenType::EQUAL) {
                 consume();
             }
             else {
@@ -309,6 +330,12 @@ public:
             NodeStmt* stmt = m_allocator.alloc<NodeStmt>();
             stmt->var = stmtLet;
             return stmt;
+        }
+
+        else if (peek().has_value() && peek().value().type == TokenType::IDENT && 
+                 peek().has_value() && peek().value().type == TokenType::EQUAL) {
+
+                
         }
 
         else if (peek().has_value() && peek().value().type == TokenType::OPEN_CURLY) {
@@ -361,9 +388,76 @@ public:
                 exit(1);
             }
 
+            stmtIf->pred = parseIfPred();
+
             NodeStmt* stmt = m_allocator.alloc<NodeStmt>();
             stmt->var = stmtIf;
             return stmt;
+        }
+
+        else return {};
+    }
+
+    std::optional<NodeIfPred*> parseIfPred() {
+
+        if (peek().has_value() && peek().value().type == TokenType::ELIF) {
+            consume();
+            auto ifPredElif = m_allocator.alloc<NodeIfPredElif>();
+            
+            if (peek().has_value() && peek().value().type == TokenType::OPEN_PAREN) {
+                consume();
+            }
+            else {
+                std::cerr << "Expected '('" << std::endl;
+                exit(1);
+            }
+            
+            if (auto expr = parseExpr()) {
+                ifPredElif->expr = expr.value();
+            }
+            else {
+                std::cerr << "Invalid Expression" << std::endl;
+                exit(1);
+            }
+
+            if (peek().has_value() && peek().value().type == TokenType::CLOSE_PAREN) {
+                consume();
+            }
+            else {
+                std::cerr << "Expected ')'" << std::endl;
+                exit(1);
+            }
+
+            if (auto scope = parseScope()) {
+                ifPredElif->scope = scope.value();
+            }
+            else {
+                std::cerr << "Invalid Scope" << std::endl;
+                exit(1);
+            }
+
+            ifPredElif->pred = parseIfPred();
+
+            auto ifPred = m_allocator.alloc<NodeIfPred>();
+            ifPred->var = ifPredElif;
+            return ifPred;
+        }
+
+        else if (peek().has_value() && peek().value().type == TokenType::ELSE_) {
+            consume();
+            auto ifPredElse = m_allocator.alloc<NodeIfPredElse>();
+
+            if (auto scope = parseScope()) {
+                ifPredElse->scope = scope.value();
+            }
+            else {
+                std::cerr << "Invalid Scope" << std::endl;
+                exit(1);
+            }
+
+            auto ifPred = m_allocator.alloc<NodeIfPred>();
+            ifPred->var = ifPredElse;
+            return ifPred;
         }
 
         else return {};

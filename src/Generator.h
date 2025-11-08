@@ -138,6 +138,39 @@ public:
         scopeEnd();
     }
 
+    void genIfPred(const NodeIfPred* pred, std::string endLabel) {
+
+        struct PredVisitor {
+            Generator* gen;
+            std::string endLabel;
+
+            void operator()(const NodeIfPredElif* predElif) {
+                gen->genExpr(predElif->expr);
+                gen->pop("rax");
+                gen->m_output << "   cmp rax, 0\n";
+
+                std::string label = gen->createLabel();
+                gen->m_output << "   jz " << label << "\n";
+                
+                gen->genScope(predElif->scope);
+
+                gen->m_output << "   jmp " << endLabel << "\n";
+
+                gen->m_output << label << ":\n";
+
+                if (predElif->pred.has_value()) {
+                    gen->genIfPred(predElif->pred.value(), endLabel);
+                }
+            }
+            void operator()(const NodeIfPredElse* predElse) {
+                gen->genScope(predElse->scope);
+            }
+        };
+
+        PredVisitor visitor{this, endLabel};
+        std::visit(visitor, pred->var);
+    }
+
     void genStmt(const NodeStmt& stmt) {
 
         struct StmtVisitor {
@@ -171,12 +204,21 @@ public:
                 gen->pop("rax");
                 gen->m_output << "   cmp rax, 0\n";
 
-                size_t currCount = gen->labelCounter++;
-                gen->m_output << "   jz label" << currCount << "\n";
+                std::string label = gen->createLabel();
+                gen->m_output << "   jz " << label << "\n";
                 
                 gen->genScope(stmtIf->scope);
 
-                gen->m_output << "label" << currCount << ":\n";
+                std::string endLabel = "end" + gen->createLabel();
+                gen->m_output << "   jmp " << endLabel << "\n";
+
+                gen->m_output << label << ":\n";
+
+                if (stmtIf->pred.has_value()) {
+                    gen->genIfPred(stmtIf->pred.value(), endLabel);
+                }
+
+                gen->m_output << endLabel << ":\n";
             }
         };
 
@@ -222,6 +264,10 @@ private:
         m_stackSize -= scopeSize;
     }
 
+    std::string createLabel() {
+        return "label" + std::to_string(labelCounter++);
+    }
+
 
 private:
 
@@ -261,7 +307,7 @@ private:
 
             throw std::out_of_range("Variable not found");
         }
-};
+    };
 
 
     const NodeProg m_prog;

@@ -1,5 +1,10 @@
-let x = 0;
-if (x) {
-    exit(1);
+let x = 3;
+if (0) {
+    exit(69);
 }
-exit(0);
+elif (0) {
+    exit(90);
+}
+else {
+    exit(x);
+}
