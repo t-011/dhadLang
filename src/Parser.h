@@ -100,8 +100,13 @@ struct NodeStmtAssign {
     NodeExpr* expr;
 };
 
+struct NodeStmtWhile {
+    NodeExpr* expr;
+    NodeScope* scope;
+};
+
 struct NodeStmt {
-    std::variant<NodeStmtExit*, NodeStmtLet*, NodeScope*, NodeStmtIf*, NodeStmtAssign*> var;
+    std::variant<NodeStmtExit*, NodeStmtLet*, NodeScope*, NodeStmtIf*, NodeStmtAssign*, NodeStmtWhile*> var;
 };
 
 struct NodeProg {
@@ -409,6 +414,48 @@ public:
 
             NodeStmt* stmt = m_allocator.alloc<NodeStmt>();
             stmt->var = stmtIf;
+            return stmt;
+        }
+
+        else if (peek().has_value() && peek().value().type == TokenType::WHILE) {
+            consume();
+
+            auto stmtWhile = m_allocator.alloc<NodeStmtWhile>();
+
+            if (peek().has_value() && peek().value().type == TokenType::OPEN_PAREN) {
+                consume();
+            }
+            else {
+                std::cerr << "Expected '('" << std::endl;
+                exit(1);
+            }
+            
+            if (auto expr = parseExpr()) {
+                stmtWhile->expr = expr.value();
+            }
+            else {
+                std::cerr << "Invalid Expression" << std::endl;
+                exit(1);
+            }
+
+            if (peek().has_value() && peek().value().type == TokenType::CLOSE_PAREN) {
+                consume();
+            }
+            else {
+                std::cerr << "Expected ')'" << std::endl;
+                exit(1);
+            }
+
+            if (auto scope = parseScope()) {
+                stmtWhile->scope = scope.value();
+            }
+            else {
+                std::cerr << "Invalid Scope" << std::endl;
+                exit(1);
+            }
+
+            NodeStmt* stmt = m_allocator.alloc<NodeStmt>();
+            stmt->var = stmtWhile;
             return stmt;
         }
 

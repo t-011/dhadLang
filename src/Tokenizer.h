@@ -24,7 +24,8 @@ enum class TokenType {
     MOD,
     IF_,
     ELIF,
-    ELSE_
+    ELSE_,
+    WHILE
 };
 
 struct Token {
@@ -79,6 +80,9 @@ public:
                 }
                 else if (buffer == "else") { 
                     tokens.push_back({TokenType::ELSE_, "else"});
+                }
+                else if (buffer == "while") {
+                    tokens.push_back({TokenType::WHILE, "while"});
                 }
                 else {
                     tokens.push_back({TokenType::IDENT, buffer});

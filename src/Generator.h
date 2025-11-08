@@ -229,6 +229,24 @@ public:
 
                 gen->m_output << endLabel << ":\n";
             }
+
+            void operator()(const NodeStmtWhile* stmtWhile) {
+                std::string startLabel = gen->createLabel();
+                gen->m_output << startLabel << ":\n";
+
+                gen->genExpr(stmtWhile->expr);
+                gen->pop("rax");
+
+                gen->m_output << "   cmp rax, 0\n";
+
+                std::string endLabel = gen->createLabel();
+                gen->m_output << "   jz " << endLabel << "\n";
+
+                gen->genScope(stmtWhile->scope);
+                gen->m_output << "   jmp " << startLabel << "\n";
+
+                gen->m_output << endLabel << ":\n";
+            }
         };
 
         StmtVisitor visitor{this};
