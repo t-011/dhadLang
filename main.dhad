@@ -1,3 +1,5 @@
-let x = ((9 % 2) + 1) * 2;
-let y = 3 * 5;
-exit(x);
+let x = 0;
+if (x) {
+    exit(1);
+}
+exit(0);

@@ -128,6 +128,15 @@ public:
         std::visit(visitor, expr->var);
     }
 
+    void genScope(const NodeScope* scope) {
+        scopeBegin();
+
+        for (const NodeStmt* stmt : scope->stmts) {
+            genStmt(*stmt);
+        }
+
+        scopeEnd();
+    }
 
     void genStmt(const NodeStmt& stmt) {
 
@@ -152,14 +161,22 @@ public:
 
             }
 
-            void operator()(const NodeStmtScope* stmtScope) {
-                gen->scopeBegin();
+            void operator()(const NodeScope* stmtScope) {
+                gen->genScope(stmtScope);
+            }
 
-                for (const NodeStmt* stmt : stmtScope->stmts) {
-                    gen->genStmt(*stmt);
-                }
+            void operator()(const NodeStmtIf* stmtIf) {
+                
+                gen->genExpr(stmtIf->expr);
+                gen->pop("rax");
+                gen->m_output << "   cmp rax, 0\n";
 
-                gen->scopeEnd();
+                size_t currCount = gen->labelCounter++;
+                gen->m_output << "   jz label" << currCount << "\n";
+                
+                gen->genScope(stmtIf->scope);
+
+                gen->m_output << "label" << currCount << ":\n";
             }
         };
 
@@ -251,4 +268,5 @@ private:
     std::stringstream m_output;
     size_t m_stackSize = 0;
     ScopeStack m_vars{};
+    size_t labelCounter = 0;
 };

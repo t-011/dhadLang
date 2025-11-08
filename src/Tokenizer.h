@@ -21,7 +21,8 @@ enum class TokenType {
     SUB,
     MULT,
     DIV,
-    MOD
+    MOD,
+    IF_
 };
 
 struct Token {
@@ -67,6 +68,9 @@ public:
                 }
                 else if (buffer == "let") {
                     tokens.push_back({TokenType::LET, "let"});
+                }
+                else if (buffer == "if") {
+                    tokens.push_back({TokenType::IF_, "if"});
                 } 
                 else {
                     tokens.push_back({TokenType::IDENT, buffer});
