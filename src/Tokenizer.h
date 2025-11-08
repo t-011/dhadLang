@@ -25,7 +25,10 @@ enum class TokenType {
     IF_,
     ELIF,
     ELSE_,
-    WHILE
+    WHILE,
+    EXCLAM,
+    GR_THAN,
+    LS_THAN
 };
 
 struct Token {
@@ -161,6 +164,21 @@ public:
 
             else if (curr == '%') {
                 tokens.push_back({TokenType::MOD, "%"});
+                continue;
+            }
+
+            else if (curr == '!') {
+                tokens.push_back({TokenType::EXCLAM, "!"});
+                continue;
+            }
+
+            else if (curr == '>') {
+                tokens.push_back({TokenType::GR_THAN, ">"});
+                continue;
+            }
+
+            else if (curr == '<') {
+                tokens.push_back({TokenType::LS_THAN, "<"});
                 continue;
             }
 

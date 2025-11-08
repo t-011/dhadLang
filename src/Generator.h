@@ -105,6 +105,58 @@ public:
                 
                 gen->push("rdx");
             }
+
+            void operator()(const BinExprEqTo* exprEq) {
+                gen->genExpr(exprEq->lhs);
+                gen->genExpr(exprEq->rhs);
+
+                gen->pop("rbx");
+                gen->pop("rax");
+
+                gen->m_output << "   cmp rax, rbx\n";
+                gen->m_output << "   sete al\n";
+                gen->m_output << "   movzx rax, al\n";
+                gen->push("rax");
+            }
+
+            void operator()(const BinExprNotEqTo* exprNeq) {
+                gen->genExpr(exprNeq->lhs);
+                gen->genExpr(exprNeq->rhs);
+
+                gen->pop("rbx");
+                gen->pop("rax");
+
+                gen->m_output << "   cmp rax, rbx\n";
+                gen->m_output << "   setne al\n";
+                gen->m_output << "   movzx rax, al\n";
+                gen->push("rax");
+            }
+
+            void operator()(const BinExprLsThan* exprLt) {
+                gen->genExpr(exprLt->lhs);
+                gen->genExpr(exprLt->rhs);
+
+                gen->pop("rbx");
+                gen->pop("rax");
+
+                gen->m_output << "   cmp rax, rbx\n";
+                gen->m_output << "   setl al\n";
+                gen->m_output << "   movzx rax, al\n";
+                gen->push("rax");
+            }
+
+            void operator()(const BinExprGrThan* exprGt) {
+                gen->genExpr(exprGt->lhs);
+                gen->genExpr(exprGt->rhs);
+
+                gen->pop("rbx");
+                gen->pop("rax");
+
+                gen->m_output << "   cmp rax, rbx\n";
+                gen->m_output << "   setg al\n";
+                gen->m_output << "   movzx rax, al\n";
+                gen->push("rax");
+            }
         };
 
         BinExprVisitor visitor{this};
@@ -200,7 +252,10 @@ public:
                     exit(1);
                 }
                 gen->genExpr(stmtAssign->expr);
-                gen->m_vars.at(stmtAssign->ident.val) = Var{ .m_stackLoc = gen->m_stackSize };
+                gen->pop("rax");
+
+                const auto& var = gen->m_vars.at(stmtAssign->ident.val);
+                gen->m_output << "   mov QWORD [rsp + " << (gen->m_stackSize - var.m_stackLoc) * 8 << "], rax\n";
             }
 
             void operator()(const NodeScope* stmtScope) {

@@ -1,6 +1,11 @@
-let x = 3;
-while (x) {
-    x = x + 5;
-    exit(x);
+
+let x = 10;
+let y = 10;
+
+while (x != 20) {
+    y = y + 2;
+    
 }
-exit(x);
+
+exit(y);
+

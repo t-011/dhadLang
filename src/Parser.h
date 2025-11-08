@@ -56,8 +56,29 @@ struct BinExprMod {
     NodeExpr* rhs;
 };
 
+struct BinExprEqTo {
+    NodeExpr* lhs;
+    NodeExpr* rhs;
+};
+
+struct BinExprNotEqTo {
+    NodeExpr* lhs;
+    NodeExpr* rhs;
+};
+
+struct BinExprGrThan {
+    NodeExpr* lhs;
+    NodeExpr* rhs;
+};
+
+struct BinExprLsThan {
+    NodeExpr* lhs;
+    NodeExpr* rhs;
+};
+
 struct BinExpr {
-    std::variant<BinExprAdd*, BinExprSub*, BinExprDiv*, BinExprMult*, BinExprMod*> var;
+    std::variant<BinExprAdd*, BinExprSub*, BinExprDiv*, BinExprMult*, BinExprMod*,
+     BinExprEqTo*, BinExprNotEqTo*, BinExprGrThan*, BinExprLsThan*> var;
 };
 
 struct NodeStmtExit {
@@ -178,6 +199,40 @@ public:
 
         while (peek() && precedence(peek()->type) >= minPrec) {
             auto op = consume();
+
+            if (op.type == TokenType::EQUAL && peek() && peek()->type == TokenType::EQUAL) {
+                consume(); // consume second '='
+                auto rhs = parseExpr(precedence(TokenType::EQUAL) + 1);
+
+                auto exprEqTo = m_allocator.alloc<BinExprEqTo>();
+                exprEqTo->lhs = lhs;
+                exprEqTo->rhs = rhs.value();
+
+                auto binExpr = m_allocator.alloc<BinExpr>();
+                binExpr->var = exprEqTo;
+
+                auto expr = m_allocator.alloc<NodeExpr>();
+                expr->var = binExpr;
+                lhs = expr;
+                continue;
+            }
+            else if (op.type == TokenType::EXCLAM && peek() && peek()->type == TokenType::EQUAL) {
+                consume(); // consume '='
+                auto rhs = parseExpr(precedence(TokenType::EQUAL) + 1);
+
+                auto exprNeq = m_allocator.alloc<BinExprNotEqTo>();
+                exprNeq->lhs = lhs;
+                exprNeq->rhs = rhs.value();
+
+                auto binExpr = m_allocator.alloc<BinExpr>();
+                binExpr->var = exprNeq;
+
+                auto expr = m_allocator.alloc<NodeExpr>();
+                expr->var = binExpr;
+                lhs = expr;
+                continue;
+            }
+
             auto rhs = parseExpr(precedence(op.type) + 1);
             if (!rhs) {
                 std::cerr << "Expected RHS" << std::endl;
@@ -216,6 +271,18 @@ public:
                 exprMod->lhs = lhs;
                 exprMod->rhs = rhs.value();
                 binExpr->var = exprMod;
+            }
+            else if (op.type == TokenType::GR_THAN) {
+                auto exprGrThan = m_allocator.alloc<BinExprGrThan>();
+                exprGrThan->lhs = lhs;
+                exprGrThan->rhs = rhs.value();
+                binExpr->var = exprGrThan;
+            }
+            else if (op.type == TokenType::LS_THAN) {
+                auto exprLsThan = m_allocator.alloc<BinExprLsThan>();
+                exprLsThan->lhs = lhs;
+                exprLsThan->rhs = rhs.value();
+                binExpr->var = exprLsThan;
             }
 
             expr->var = binExpr;
@@ -565,18 +632,20 @@ private:
         
         switch(tk) {
             case TokenType::PLUS :
-                return 1;
-
             case TokenType::SUB :
-                return 1;
+                return 3;
             
             case TokenType::MULT :
-                return 2;
-
             case TokenType::DIV :
-                return 2;
-            
             case TokenType::MOD :
+                return 4;
+
+            case TokenType::EQUAL :
+            case TokenType::EXCLAM :
+                return 1;
+
+            case TokenType::GR_THAN :
+            case TokenType::LS_THAN :
                 return 2;
 
             default:
