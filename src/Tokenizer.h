@@ -4,6 +4,7 @@
 #include <vector>
 #include <cstring>
 #include <cctype>
+#include <optional>
 
 enum class TokenType {
     ERROR = 0,
@@ -17,6 +18,7 @@ enum class TokenType {
     IDENT,
     LET,
     EQUAL,
+    EQEQ,
     PLUS,
     SUB,
     MULT,
@@ -26,7 +28,8 @@ enum class TokenType {
     ELIF,
     ELSE_,
     WHILE,
-    EXCLAM,
+    BANG,
+    BANG_EQ,
     GR_THAN,
     LS_THAN
 };
@@ -49,26 +52,19 @@ public:
         std::vector<Token> tokens;
 
         std::string buffer;
-        for (size_t i = 0; i < m_srcLen; ++i) {
-            char curr = m_src[i];
+        while(peek().has_value()) {
+            char curr = consume();
 
             if (isspace(curr)) {
                 continue;
             }
 
             else if (isalpha(curr)) {
-                while (i < m_srcLen && isalnum(m_src[i])) {
-                    buffer.push_back(m_src[i]);
-                    ++i;
+                buffer.push_back(curr);
+                while (peek() && isalnum(peek().value())) {
+                    buffer.push_back(consume());
                 }
 
-                if (i >= m_srcLen) {
-                    //ERROR (cause semi needs to be last)
-                    tokens.clear();
-                    return tokens;
-                }
-
-                --i; // while loop, off by one
                 if (buffer == "exit") {
                     tokens.push_back({TokenType::EXIT, "exit"});
                 }
@@ -91,29 +87,25 @@ public:
                     tokens.push_back({TokenType::IDENT, buffer});
                 }
                 buffer.clear();
-                continue;
             }
 
             else if (isdigit(curr)) {
-                while (i < m_srcLen && isdigit(m_src[i])) {
-                    buffer.push_back(m_src[i]);
-                    ++i;
+                buffer.push_back(curr);
+                while (peek() && isdigit(peek().value())) {
+                    buffer.push_back(consume());
                 }
 
-                if (i >= m_srcLen) {
-                    //ERROR (cause semi needs to be last)
-                    tokens.clear();
-                    return tokens;
-                }
-
-                --i;
                 tokens.push_back({TokenType::INT_LIT, buffer});
                 buffer.clear();
-                continue;
             }
 
             else if (curr == '=') {
-                tokens.push_back({TokenType::EQUAL, "="});
+                if (peek() && peek().value() == '=') {
+                    consume();
+                    tokens.push_back({TokenType::EQEQ, "=="});
+                } else {
+                    tokens.push_back({TokenType::EQUAL, "="});
+                }
                 continue;
             }
 
@@ -168,7 +160,12 @@ public:
             }
 
             else if (curr == '!') {
-                tokens.push_back({TokenType::EXCLAM, "!"});
+                if (peek() && peek().value() == '=') {
+                    consume();
+                    tokens.push_back({TokenType::BANG_EQ, "!="});
+                } else {
+                    tokens.push_back({TokenType::BANG, "!"});
+                }
                 continue;
             }
 
@@ -193,8 +190,24 @@ public:
     }
 
 private:
+    std::optional<char> peek(unsigned int ahead = 0) const {
+
+        if (m_pos + ahead >= m_src.size()) {
+            return {};
+        }
+
+        else {
+            return m_src.at(m_pos + ahead);
+        }
+    }
+
+    char consume() {
+        return m_src.at(m_pos++);
+    }
+
+private:
     std::string m_src;
     size_t m_srcLen;
-
+    size_t m_pos = 0;
 };
 

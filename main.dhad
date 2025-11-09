@@ -1,11 +1,24 @@
 
-let x = 10;
-let y = 10;
 
-while (x != 20) {
-    y = y + 2;
-    
+let x = 0;
+
+
+
+if (x > 1) {
+    x = 1;
+}
+elif (x == 2) {
+    x = 2;
+}
+elif (x != 0) {
+    x = 3;
+}
+elif (x != 0) {
+    x = 4;
+}
+else {
+    x = 5;
 }
 
-exit(y);
+exit(x);
 

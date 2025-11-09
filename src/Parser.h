@@ -200,39 +200,6 @@ public:
         while (peek() && precedence(peek()->type) >= minPrec) {
             auto op = consume();
 
-            if (op.type == TokenType::EQUAL && peek() && peek()->type == TokenType::EQUAL) {
-                consume(); // consume second '='
-                auto rhs = parseExpr(precedence(TokenType::EQUAL) + 1);
-
-                auto exprEqTo = m_allocator.alloc<BinExprEqTo>();
-                exprEqTo->lhs = lhs;
-                exprEqTo->rhs = rhs.value();
-
-                auto binExpr = m_allocator.alloc<BinExpr>();
-                binExpr->var = exprEqTo;
-
-                auto expr = m_allocator.alloc<NodeExpr>();
-                expr->var = binExpr;
-                lhs = expr;
-                continue;
-            }
-            else if (op.type == TokenType::EXCLAM && peek() && peek()->type == TokenType::EQUAL) {
-                consume(); // consume '='
-                auto rhs = parseExpr(precedence(TokenType::EQUAL) + 1);
-
-                auto exprNeq = m_allocator.alloc<BinExprNotEqTo>();
-                exprNeq->lhs = lhs;
-                exprNeq->rhs = rhs.value();
-
-                auto binExpr = m_allocator.alloc<BinExpr>();
-                binExpr->var = exprNeq;
-
-                auto expr = m_allocator.alloc<NodeExpr>();
-                expr->var = binExpr;
-                lhs = expr;
-                continue;
-            }
-
             auto rhs = parseExpr(precedence(op.type) + 1);
             if (!rhs) {
                 std::cerr << "Expected RHS" << std::endl;
@@ -272,6 +239,18 @@ public:
                 exprMod->rhs = rhs.value();
                 binExpr->var = exprMod;
             }
+            else if (op.type == TokenType::EQEQ) {
+                auto exprEqTo = m_allocator.alloc<BinExprEqTo>();
+                exprEqTo->lhs = lhs;
+                exprEqTo->rhs = rhs.value();
+                binExpr->var = exprEqTo;
+            }
+            else if (op.type == TokenType::BANG_EQ) {
+                auto exprNEqTo = m_allocator.alloc<BinExprNotEqTo>();
+                exprNEqTo->lhs = lhs;
+                exprNEqTo->rhs = rhs.value();
+                binExpr->var = exprNEqTo;
+            }
             else if (op.type == TokenType::GR_THAN) {
                 auto exprGrThan = m_allocator.alloc<BinExprGrThan>();
                 exprGrThan->lhs = lhs;
@@ -284,7 +263,7 @@ public:
                 exprLsThan->rhs = rhs.value();
                 binExpr->var = exprLsThan;
             }
-
+            
             expr->var = binExpr;
             lhs = expr;
         }
@@ -640,8 +619,8 @@ private:
             case TokenType::MOD :
                 return 4;
 
-            case TokenType::EQUAL :
-            case TokenType::EXCLAM :
+            case TokenType::EQEQ :
+            case TokenType::BANG_EQ :
                 return 1;
 
             case TokenType::GR_THAN :
