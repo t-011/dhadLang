@@ -144,38 +144,32 @@ public:
 
     std::optional<NodeTerm*> parseTerm() {
 
-        if (peek().has_value() && peek().value().type == TokenType::INT_LIT) {
+        if (auto intLit = tryConsume(TokenType::INT_LIT)) {
             NodeTermIntLit* termIntLit = m_allocator.alloc<NodeTermIntLit>();
-            termIntLit->int_lit = consume();
+            termIntLit->int_lit = intLit.value();
 
             NodeTerm* term = m_allocator.alloc<NodeTerm>();
             term->var = termIntLit;
             return term;
         }
 
-        else if (peek().has_value() && peek().value().type == TokenType::IDENT) {
+        else if (auto ident = tryConsume(TokenType::IDENT)) {
             NodeTermIdent* termIdent = m_allocator.alloc<NodeTermIdent>();
-            termIdent->ident = consume();
+            termIdent->ident = ident.value();
 
             NodeTerm* term = m_allocator.alloc<NodeTerm>();
             term->var = termIdent;
             return term;
         }
 
-        else if (peek().has_value() && peek().value().type == TokenType::OPEN_PAREN) {
-            consume();
+        else if (tryConsumeErr(TokenType::OPEN_PAREN, "Expected '('")) {
             auto expr = parseExpr();
             if (!expr) {
                 std::cerr << "Expected expression" << std::endl;
                 exit(1);
             }
-            if (peek().has_value() && peek().value().type == TokenType::CLOSE_PAREN) {
-                consume();
-            }
-            else {
-                std::cerr << "Expected ')'" << std::endl;
-                exit(1);
-            }
+
+            tryConsumeErr(TokenType::CLOSE_PAREN, "Expected ')'");
 
             auto termParen = m_allocator.alloc<NodeTermParen>();
             termParen->expr = expr.value();
@@ -273,8 +267,7 @@ public:
 
     std::optional<NodeScope*> parseScope() {
 
-        if (peek().has_value() && peek().value().type == TokenType::OPEN_CURLY) {
-            consume();
+        if (tryConsumeErr(TokenType::OPEN_CURLY, "Expected '{'")) {
 
             NodeScope* stmtScope = m_allocator.alloc<NodeScope>();
 
@@ -288,11 +281,7 @@ public:
                 }
             }
 
-            if (!peek().has_value()) {
-                std::cerr << "Expected '}'" << std::endl;
-                exit(1);
-            }
-            consume(); //'}'
+            tryConsumeErr(TokenType::CLOSE_CURLY, "Expected '}'");
 
             return stmtScope;
         }
@@ -302,17 +291,11 @@ public:
 
     std::optional<NodeStmt*> parseStmt() {
 
-        if (peek().has_value() && peek().value().type == TokenType::EXIT) {
-            consume();
+        if (tryConsume(TokenType::EXIT)) {
             
             NodeStmtExit* stmtExit = m_allocator.alloc<NodeStmtExit>();
-            if (peek().has_value() && peek().value().type == TokenType::OPEN_PAREN) {
-                consume();
-            }
-            else {
-                std::cerr << "Expected '('" << std::endl;
-                exit(1);
-            }
+
+            tryConsumeErr(TokenType::OPEN_PAREN, "Expected '('");
 
             if (auto expr = parseExpr()) {
                 stmtExit->expr = expr.value();
@@ -322,45 +305,23 @@ public:
                 exit(1);
             }
 
-            if (peek().has_value() && peek().value().type == TokenType::CLOSE_PAREN) {
-                consume();
-            }
-            else {
-                std::cerr << "Expected ')'" << std::endl;
-                exit(1);
-            }
+            tryConsumeErr(TokenType::CLOSE_PAREN, "Expected ')'");
 
-            if (peek().has_value() && peek().value().type == TokenType::SEMI) {
-                consume();
-            }
-            else {
-                std::cerr << "Expected ';'" << std::endl;
-                exit(1);
-            }
+            tryConsumeErr(TokenType::SEMI, "Expected ';'");
+
             NodeStmt* stmt = m_allocator.alloc<NodeStmt>();
             stmt->var = stmtExit;
             return stmt;
         }
 
-        else if (peek().has_value() && peek().value().type == TokenType::LET) {
-            consume();
+        else if (tryConsume(TokenType::LET)) {
 
             NodeStmtLet* stmtLet = m_allocator.alloc<NodeStmtLet>();
-            if (peek().has_value() && peek().value().type == TokenType::IDENT) {
-                stmtLet->ident = consume();
-            }
-            else {
-                std::cerr << "Expected an identifier" << std::endl;
-                exit(1);
-            }
 
-            if (peek().has_value() && peek().value().type == TokenType::EQUAL) {
-                consume();
-            }
-            else {
-                std::cerr << "Expected '='" << std::endl;
-                exit(1);
-            }
+            auto ident = tryConsumeErr(TokenType::IDENT, "Expected an identifier");
+            stmtLet->ident = ident.value();
+
+            tryConsumeErr(TokenType::EQUAL, "Expected '='");
 
             if (auto expr = parseExpr()) {
                 stmtLet->expr = expr.value();
@@ -370,13 +331,7 @@ public:
                 exit(1);
             }
 
-            if (peek().has_value() && peek().value().type == TokenType::SEMI) {
-                consume();
-            }
-            else {
-                std::cerr << "Expected ';' instead of: " << peek().value().val << std::endl;
-                exit(1);
-            }
+            tryConsumeErr(TokenType::SEMI, "Expected ';'");
 
             NodeStmt* stmt = m_allocator.alloc<NodeStmt>();
             stmt->var = stmtLet;
@@ -393,13 +348,7 @@ public:
                 stmtAssign->expr = expr.value();
             }
 
-            if (peek().has_value() && peek().value().type == TokenType::SEMI) {
-                consume();
-            }
-            else {
-                std::cerr << "Expected ';' instead of: " << peek().value().val << std::endl;
-                exit(1);
-            }
+            tryConsumeErr(TokenType::SEMI, "Expected ';'");
 
             NodeStmt* stmt = m_allocator.alloc<NodeStmt>();
             stmt->var = stmtAssign;
@@ -420,17 +369,11 @@ public:
             }
         }
 
-        else if (peek().has_value() && peek().value().type == TokenType::IF_) {
-            consume();
+        else if (tryConsume(TokenType::IF_)) {
+            
             NodeStmtIf* stmtIf = m_allocator.alloc<NodeStmtIf>();
 
-            if (peek().has_value() && peek().value().type == TokenType::OPEN_PAREN) {
-                consume();
-            }
-            else {
-                std::cerr << "Expected '('" << std::endl;
-                exit(1);
-            }
+            tryConsumeErr(TokenType::OPEN_PAREN, "Expected '('");
             
             if (auto expr = parseExpr()) {
                 stmtIf->expr = expr.value();
@@ -440,13 +383,7 @@ public:
                 exit(1);
             }
 
-            if (peek().has_value() && peek().value().type == TokenType::CLOSE_PAREN) {
-                consume();
-            }
-            else {
-                std::cerr << "Expected ')'" << std::endl;
-                exit(1);
-            }
+            tryConsumeErr(TokenType::CLOSE_PAREN, "Expected ')'");
 
             if (auto scope = parseScope()) {
                 stmtIf->scope = scope.value();
@@ -463,18 +400,11 @@ public:
             return stmt;
         }
 
-        else if (peek().has_value() && peek().value().type == TokenType::WHILE) {
-            consume();
+        else if (tryConsume(TokenType::WHILE)) {
 
             auto stmtWhile = m_allocator.alloc<NodeStmtWhile>();
 
-            if (peek().has_value() && peek().value().type == TokenType::OPEN_PAREN) {
-                consume();
-            }
-            else {
-                std::cerr << "Expected '('" << std::endl;
-                exit(1);
-            }
+            tryConsumeErr(TokenType::OPEN_PAREN, "Expected '('");
             
             if (auto expr = parseExpr()) {
                 stmtWhile->expr = expr.value();
@@ -484,13 +414,7 @@ public:
                 exit(1);
             }
 
-            if (peek().has_value() && peek().value().type == TokenType::CLOSE_PAREN) {
-                consume();
-            }
-            else {
-                std::cerr << "Expected ')'" << std::endl;
-                exit(1);
-            }
+            tryConsumeErr(TokenType::CLOSE_PAREN, "Expected ')'");
 
             if (auto scope = parseScope()) {
                 stmtWhile->scope = scope.value();
@@ -510,17 +434,11 @@ public:
 
     std::optional<NodeIfPred*> parseIfPred() {
 
-        if (peek().has_value() && peek().value().type == TokenType::ELIF) {
-            consume();
+        if (tryConsume(TokenType::ELIF)) {
+            
             auto ifPredElif = m_allocator.alloc<NodeIfPredElif>();
             
-            if (peek().has_value() && peek().value().type == TokenType::OPEN_PAREN) {
-                consume();
-            }
-            else {
-                std::cerr << "Expected '('" << std::endl;
-                exit(1);
-            }
+            tryConsumeErr(TokenType::OPEN_PAREN, "Expected '('");
             
             if (auto expr = parseExpr()) {
                 ifPredElif->expr = expr.value();
@@ -530,13 +448,7 @@ public:
                 exit(1);
             }
 
-            if (peek().has_value() && peek().value().type == TokenType::CLOSE_PAREN) {
-                consume();
-            }
-            else {
-                std::cerr << "Expected ')'" << std::endl;
-                exit(1);
-            }
+            tryConsumeErr(TokenType::CLOSE_PAREN, "Expected ')'");
 
             if (auto scope = parseScope()) {
                 ifPredElif->scope = scope.value();
@@ -553,8 +465,8 @@ public:
             return ifPred;
         }
 
-        else if (peek().has_value() && peek().value().type == TokenType::ELSE_) {
-            consume();
+        else if (tryConsume(TokenType::ELSE_)) {
+
             auto ifPredElse = m_allocator.alloc<NodeIfPredElse>();
 
             if (auto scope = parseScope()) {
@@ -605,6 +517,24 @@ private:
 
     Token consume() {
         return m_tokens.at(m_pos++);
+    }
+
+    std::optional<Token> tryConsume(TokenType type) {
+        if (peek().has_value() && peek().value().type == type) {
+            return consume();
+        }
+        else return {};
+    }
+
+    std::optional<Token> tryConsumeErr(TokenType type, std::string errMsg) {
+        if (peek().has_value() && peek().value().type == type) {
+            return consume();
+        }
+        else {
+            std::cerr << errMsg << std::endl;
+            exit(1);
+            return {};
+        }
     }
 
     int precedence(TokenType tk) {
