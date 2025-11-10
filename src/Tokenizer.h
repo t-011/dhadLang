@@ -10,6 +10,7 @@ enum class TokenType {
     ERROR = 0,
     INT_LIT,
     SEMI,
+    COMMA,
     EXIT,
     OPEN_PAREN,
     CLOSE_PAREN,
@@ -17,6 +18,7 @@ enum class TokenType {
     CLOSE_CURLY,
     IDENT,
     LET,
+    RETURN,
     EQUAL,
     EQEQ,
     PLUS,
@@ -82,6 +84,9 @@ public:
                 }
                 else if (buffer == "while") {
                     tokens.push_back({TokenType::WHILE, "while"});
+                }
+                else if (buffer == "return") {
+                    tokens.push_back({TokenType::RETURN, "return"});
                 }
                 else {
                     tokens.push_back({TokenType::IDENT, buffer});
@@ -176,6 +181,11 @@ public:
 
             else if (curr == '<') {
                 tokens.push_back({TokenType::LS_THAN, "<"});
+                continue;
+            }
+
+            else if (curr == ',') {
+                tokens.push_back({TokenType::COMMA, ","});
                 continue;
             }
 

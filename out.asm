@@ -1,90 +1,56 @@
 global _start
 _start:
-   mov rax, 0
-   push rax
-   push QWORD [rsp + 0]
    mov rax, 1
    push rax
+   jmp overlabel0func
+func:
+   mov rax, QWORD [rsp + 32]
+   push rax
+   mov rax, QWORD [rsp + 32]
+   push rax
+   mov rax, QWORD [rsp + 32]
+   push rax
+   mov rax, QWORD [rsp + 32]
+   push rax
+   push QWORD [rsp + 24]
+   push QWORD [rsp + 24]
    pop rbx
    pop rax
-   cmp rax, rbx
-   setg al
-   movzx rax, al
+   add rax, rbx
+   push rax
+   push QWORD [rsp + 16]
+   pop rbx
+   pop rax
+   add rax, rbx
+   push rax
+   push QWORD [rsp + 8]
+   pop rbx
+   pop rax
+   add rax, rbx
+   push rax
+   push QWORD [rsp + 40]
+   pop rbx
+   pop rax
+   add rax, rbx
    push rax
    pop rax
-   cmp rax, 0
-   jz label0
-   mov rax, 1
-   push rax
-   pop rax
-   mov QWORD [rsp + 0], rax
+   add rsp, 32
+   ret
    add rsp, 0
-   jmp endlabel1
-label0:
-   push QWORD [rsp + 0]
-   mov rax, 2
-   push rax
-   pop rbx
-   pop rax
-   cmp rax, rbx
-   sete al
-   movzx rax, al
-   push rax
-   pop rax
-   cmp rax, 0
-   jz label2
-   mov rax, 2
-   push rax
-   pop rax
-   mov QWORD [rsp + 0], rax
-   add rsp, 0
-   jmp endlabel1
-label2:
-   push QWORD [rsp + 0]
-   mov rax, 0
-   push rax
-   pop rbx
-   pop rax
-   cmp rax, rbx
-   setne al
-   movzx rax, al
-   push rax
-   pop rax
-   cmp rax, 0
-   jz label3
+   ret
+   add rsp, 32
+overlabel0func:
    mov rax, 3
    push rax
-   pop rax
-   mov QWORD [rsp + 0], rax
-   add rsp, 0
-   jmp endlabel1
-label3:
-   push QWORD [rsp + 0]
-   mov rax, 0
-   push rax
-   pop rbx
-   pop rax
-   cmp rax, rbx
-   setne al
-   movzx rax, al
-   push rax
-   pop rax
-   cmp rax, 0
-   jz label4
    mov rax, 4
    push rax
-   pop rax
-   mov QWORD [rsp + 0], rax
-   add rsp, 0
-   jmp endlabel1
-label4:
-   mov rax, 5
+   mov rax, 2
    push rax
-   pop rax
-   mov QWORD [rsp + 0], rax
-   add rsp, 0
-endlabel1:
-   push QWORD [rsp + 0]
+   mov rax, 3
+   push rax
+   call func
+   add rsp, 32
+   push rax
    mov rax, 60
    pop rdi
    syscall

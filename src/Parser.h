@@ -7,6 +7,26 @@
 #include "ArenaAlloc.h"
 #include <iostream>
 
+struct NodeScope;
+struct NodeExpr;
+struct NodeFuncParam {
+    Token ident;
+};
+
+struct NodeStmtFuncDecl {
+    Token ident;
+    std::vector<NodeFuncParam*> params;
+    NodeScope* scope;
+};
+
+struct NodeTermFuncCall {
+    Token ident;
+    std::vector<NodeExpr*> args;
+};
+
+struct NodeStmtReturn {
+    NodeExpr* expr;
+};
 
 struct NodeTermIntLit {
     Token int_lit;
@@ -16,13 +36,13 @@ struct NodeTermIdent {
     Token ident;
 };
 
-struct NodeExpr;
+
 struct NodeTermParen {
     NodeExpr* expr;
 };
 
 struct NodeTerm {
-    std::variant<NodeTermIntLit*, NodeTermIdent*, NodeTermParen*> var;
+    std::variant<NodeTermIntLit*, NodeTermIdent*, NodeTermParen*, NodeTermFuncCall*> var;
 };
 
 
@@ -127,7 +147,7 @@ struct NodeStmtWhile {
 };
 
 struct NodeStmt {
-    std::variant<NodeStmtExit*, NodeStmtLet*, NodeScope*, NodeStmtIf*, NodeStmtAssign*, NodeStmtWhile*> var;
+    std::variant<NodeStmtExit*, NodeStmtLet*, NodeScope*, NodeStmtIf*, NodeStmtAssign*, NodeStmtWhile*, NodeStmtFuncDecl*, NodeStmtReturn*> var;
 };
 
 struct NodeProg {
@@ -153,16 +173,7 @@ public:
             return term;
         }
 
-        else if (auto ident = tryConsume(TokenType::IDENT)) {
-            NodeTermIdent* termIdent = m_allocator.alloc<NodeTermIdent>();
-            termIdent->ident = ident.value();
-
-            NodeTerm* term = m_allocator.alloc<NodeTerm>();
-            term->var = termIdent;
-            return term;
-        }
-
-        else if (tryConsumeErr(TokenType::OPEN_PAREN, "Expected '('")) {
+        else if (tryConsume(TokenType::OPEN_PAREN)) {
             auto expr = parseExpr();
             if (!expr) {
                 std::cerr << "Expected expression" << std::endl;
@@ -176,6 +187,43 @@ public:
             auto term = m_allocator.alloc<NodeTerm>();
             term->var = termParen;
 
+            return term;
+        }
+
+        else if (peek().has_value() && peek().value().type == TokenType::IDENT && 
+                 peek(1).has_value() && peek(1).value().type == TokenType::OPEN_PAREN) {
+
+            auto funcCall = m_allocator.alloc<NodeTermFuncCall>();
+            funcCall->ident = consume(); consume(); // '('
+
+            while (peek().has_value() && peek().value().type != TokenType::CLOSE_PAREN) {
+
+                if (auto expr = parseExpr()) {
+                    funcCall->args.push_back(expr.value());
+                }
+                else {
+                    std::cerr << "Invalid Expression\n";
+                    exit(1);
+                }
+                
+                if (peek().has_value() && peek().value().type != TokenType::CLOSE_PAREN) {
+                    tryConsumeErr(TokenType::COMMA, "Expected ','");
+                }
+                
+            }
+            tryConsumeErr(TokenType::CLOSE_PAREN, "Expected ')'");
+
+            auto term = m_allocator.alloc<NodeTerm>();
+            term->var = funcCall;
+            return term;
+        }
+
+        else if (auto ident = tryConsume(TokenType::IDENT)) {
+            NodeTermIdent* termIdent = m_allocator.alloc<NodeTermIdent>();
+            termIdent->ident = ident.value();
+
+            NodeTerm* term = m_allocator.alloc<NodeTerm>();
+            term->var = termIdent;
             return term;
         }
 
@@ -355,6 +403,37 @@ public:
             return stmt;
         }
 
+        else if (peek().has_value() && peek().value().type == TokenType::IDENT && 
+                 peek(1).has_value() && peek(1).value().type == TokenType::OPEN_PAREN) {
+
+            auto funcDecl = m_allocator.alloc<NodeStmtFuncDecl>();
+            funcDecl->ident = consume(); consume(); // '('
+
+            while (peek().has_value() && peek().value().type != TokenType::CLOSE_PAREN) {
+                auto funcParam = m_allocator.alloc<NodeFuncParam>();
+
+                funcParam->ident = tryConsumeErr(TokenType::IDENT, "Expected identifier").value();
+                if (peek().has_value() && peek().value().type != TokenType::CLOSE_PAREN) {
+                    tryConsumeErr(TokenType::COMMA, "Expected ','");
+                }
+
+                funcDecl->params.push_back(funcParam);
+            }
+            tryConsumeErr(TokenType::CLOSE_PAREN, "Expected ')'");
+                    
+            if (auto scope = parseScope()) {
+                funcDecl->scope = scope.value();
+            }
+            else {
+                std::cerr << "Invalid scope\n";
+                exit(1);
+            }
+
+            NodeStmt* stmt = m_allocator.alloc<NodeStmt>();
+            stmt->var = funcDecl;
+            return stmt;
+        }
+
         else if (peek().has_value() && peek().value().type == TokenType::OPEN_CURLY) {
 
             if (auto stmtScope = parseScope()) {
@@ -426,6 +505,23 @@ public:
 
             NodeStmt* stmt = m_allocator.alloc<NodeStmt>();
             stmt->var = stmtWhile;
+            return stmt;
+        }
+
+        else if (tryConsume(TokenType::RETURN)) {
+            auto stmtRet = m_allocator.alloc<NodeStmtReturn>();
+
+            if (auto expr = parseExpr()) {
+                stmtRet->expr = expr.value();
+            }
+            else {
+                std::cerr << "Invalid Expression";
+                exit(1);
+            }
+            tryConsumeErr(TokenType::SEMI, "Expected ';'");
+
+            NodeStmt* stmt = m_allocator.alloc<NodeStmt>();
+            stmt->var = stmtRet;
             return stmt;
         }
 

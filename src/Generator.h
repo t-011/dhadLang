@@ -35,6 +35,21 @@ public:
             void operator()(const NodeTermParen* termParen) const {
                 gen->genExpr(termParen->expr);
             }
+
+            void operator()(const NodeTermFuncCall* funcCall) const {
+                if (!gen->m_funcs.contains(funcCall->ident.val)) {
+                    std::cerr << "Function not declared: " << funcCall->ident.val << "\n";
+                    exit(1);
+                }
+
+                for (const auto& arg : funcCall->args) {
+                    gen->genExpr(arg);
+                }
+
+                gen->m_output << "   call " << funcCall->ident.val << "\n";
+                gen->m_output << "   add rsp, " << (funcCall->args.size() * 8) << "\n";
+                gen->push("rax");
+            }
         };
 
         TermVisitor visitor{this};
@@ -258,6 +273,53 @@ public:
                 gen->m_output << "   mov QWORD [rsp + " << (gen->m_stackSize - var.m_stackLoc) * 8 << "], rax\n";
             }
 
+            void operator()(const NodeStmtFuncDecl* funcDecl) {
+                if (gen->m_funcs.contains(funcDecl->ident.val)) {
+                    std::cerr << "Function already declared\n";
+                    exit(1);
+                }
+                gen->m_funcs.insert({funcDecl->ident.val, funcDecl});
+                
+                std::string jmpLabel = "over" + gen->createLabel() + funcDecl->ident.val;
+                gen->m_output << "   jmp " << jmpLabel << "\n";
+
+                gen->m_funcBaseStack.push_back(gen->m_stackSize);
+                gen->scopeBegin();
+
+                gen->m_output << funcDecl->ident.val << ":\n";
+                size_t paramCount = funcDecl->params.size();
+                for (size_t i = 0; i < paramCount; ++i) {
+                    const auto& param = funcDecl->params.at(i);
+                    if (gen->m_vars.back().contains(param->ident.val)) {
+                        std::cerr << "Parameter already used\n";
+                        exit(1);
+                    }
+
+                    gen->m_output << "   mov rax, QWORD [rsp + " << (paramCount * 8) << "]\n";
+                    gen->push("rax");
+
+                    gen->m_vars.insert({param->ident.val, Var{ gen->m_stackSize }});
+                }
+
+                gen->genScope(funcDecl->scope);
+
+                gen->retCleanup();
+                gen->m_output << "   ret\n";
+
+                // exit func context
+                gen->scopeEnd();
+                gen->m_funcBaseStack.pop_back();
+                
+                gen->m_output << jmpLabel << ":\n";
+            }
+
+            void operator()(const NodeStmtReturn* stmtRet) {
+                gen->genExpr(stmtRet->expr);
+                gen->pop("rax");
+                gen->retCleanup();
+                gen->m_output << "   ret\n";
+            }
+
             void operator()(const NodeScope* stmtScope) {
                 gen->genScope(stmtScope);
             }
@@ -350,6 +412,14 @@ private:
         return "label" + std::to_string(labelCounter++);
     }
 
+    void retCleanup() {
+        size_t funcBase = m_funcBaseStack.back();
+        size_t toPop = m_stackSize - funcBase;
+        if (toPop > 0) {
+            m_output << "   add rsp, " << (toPop * 8) << "\n";
+            m_stackSize = funcBase;
+        }
+    }
 
 private:
 
@@ -357,14 +427,15 @@ private:
         size_t m_stackLoc;
     };
 
+    template<typename T>
     struct ScopeStack {
-        std::vector<std::unordered_map<std::string, Var>> scopes{1};
+        std::vector<std::unordered_map<std::string, T>> scopes{1};
 
         void push_scope() { scopes.push_back({}); }
         void pop_scope() { scopes.pop_back(); }
-        std::unordered_map<std::string, Var>& back() { return scopes.back(); }
+        std::unordered_map<std::string, T>& back() { return scopes.back(); }
         
-        void insert(const std::pair<std::string, Var>& pair) {
+        void insert(const std::pair<std::string, T>& pair) {
             scopes.back().insert(pair);
         }
 
@@ -379,7 +450,7 @@ private:
             return false;
         }
 
-        Var& at(const std::string& val) {
+        T& at(const std::string& val) {
 
             for (auto it = scopes.rbegin(); it != scopes.rend(); ++it) {
                 if (it->contains(val)) {
@@ -387,7 +458,7 @@ private:
                 }
             }
 
-            throw std::out_of_range("Variable not found");
+            throw std::out_of_range("Not found");
         }
     };
 
@@ -395,6 +466,11 @@ private:
     const NodeProg m_prog;
     std::stringstream m_output;
     size_t m_stackSize = 0;
-    ScopeStack m_vars{};
+    ScopeStack<Var> m_vars{};
+
+    ScopeStack<const NodeStmtFuncDecl*> m_funcs{};
+    std::stringstream m_funcsOut;
+    std::vector<size_t> m_funcBaseStack;
+
     size_t labelCounter = 0;
 };
