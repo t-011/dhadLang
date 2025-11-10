@@ -1,6 +1,11 @@
 
 let h = 1;
-
+{
+    let zh = 3;
+    {
+        exit(zh);
+    }
+}
 func(x, y, z, q) {
     return x + y + z + q + h;
 }

@@ -27,9 +27,14 @@ public:
                     exit(1);
                 }
                 const auto& var = gen->m_vars.at(ident->ident.val);
-                std::stringstream offset;
-                offset << "QWORD [rsp + " << (gen->m_stackSize - var.m_stackLoc) * 8 << "]";
-                gen->push(offset.str());
+                if (var.isGlobal) {
+                    gen->push("QWORD [" + var.label + "]");
+                }
+                else {
+                    std::stringstream offset;
+                    offset << "QWORD [rsp + " << (gen->m_stackSize - var.m_stackLoc) * 8 << "]";
+                    gen->push(offset.str());
+                }
             }
 
             void operator()(const NodeTermParen* termParen) const {
@@ -37,8 +42,15 @@ public:
             }
 
             void operator()(const NodeTermFuncCall* funcCall) const {
+
                 if (!gen->m_funcs.contains(funcCall->ident.val)) {
                     std::cerr << "Function not declared: " << funcCall->ident.val << "\n";
+                    exit(1);
+                }
+
+                const auto& func = gen->m_funcs.at(funcCall->ident.val);
+                if (funcCall->args.size() != func.funcPtr->params.size()) {
+                    std::cerr << "# Args don't match function # Params: " << funcCall->ident.val << "\n";
                     exit(1);
                 }
 
@@ -46,7 +58,7 @@ public:
                     gen->genExpr(arg);
                 }
 
-                gen->m_output << "   call " << funcCall->ident.val << "\n";
+                gen->m_output << "   call " << func.label << "\n";
                 gen->m_output << "   add rsp, " << (funcCall->args.size() * 8) << "\n";
                 gen->push("rax");
             }
@@ -251,13 +263,32 @@ public:
             }
 
             void operator()(const NodeStmtLet* stmtLet) {
+                bool isGlobal = gen->m_vars.isGlobal();
 
                 if (gen->m_vars.contains(stmtLet->ident.val)) {
                     std::cerr << "Identifier already used: " << stmtLet->ident.val << std::endl;
                     exit(1);
                 }
+
                 gen->genExpr(stmtLet->expr);
-                gen->m_vars.insert({stmtLet->ident.val, Var{ .m_stackLoc = gen->m_stackSize}});
+
+                if (isGlobal) {
+                    gen->pop("rax");
+
+                    std::string lab = "_g_" + gen->createLabel();
+                    gen->m_output.set(Switch::Out::GLOBALS);
+                    gen->m_output << lab << ":\n";
+                    gen->m_output << "    resq 1\n";
+
+                    gen->m_output.set(Switch::Out::PROG);
+                    gen->m_output << "   mov QWORD [" << lab << "], rax\n";
+
+                    gen->m_vars.insert({stmtLet->ident.val, Var{ .isGlobal = true, .label = lab }});
+                }
+                else {
+                    gen->m_vars.insert({stmtLet->ident.val, Var{ .m_stackLoc = gen->m_stackSize}});
+                }
+
             }
 
             void operator()(const NodeStmtAssign* stmtAssign) {
@@ -274,19 +305,29 @@ public:
             }
 
             void operator()(const NodeStmtFuncDecl* funcDecl) {
+
                 if (gen->m_funcs.contains(funcDecl->ident.val)) {
                     std::cerr << "Function already declared\n";
                     exit(1);
                 }
-                gen->m_funcs.insert({funcDecl->ident.val, funcDecl});
+                if (!gen->m_vars.isGlobal()) {
+                    std::cerr << "Functions must be declared in global scope\n";
+                    exit(1);
+                }
+
+                gen->m_funcState = FuncState::IN_FUNC;
+
+                std::string funcLabel = "func" + gen->createLabel();
+                gen->m_funcs.insert({funcDecl->ident.val, {funcDecl, funcLabel}});
                 
-                std::string jmpLabel = "over" + gen->createLabel() + funcDecl->ident.val;
+                std::string jmpLabel = "over" + funcLabel;
                 gen->m_output << "   jmp " << jmpLabel << "\n";
 
                 gen->m_funcBaseStack.push_back(gen->m_stackSize);
                 gen->scopeBegin();
 
-                gen->m_output << funcDecl->ident.val << ":\n";
+                
+                gen->m_output << funcLabel << ":\n";
                 size_t paramCount = funcDecl->params.size();
                 for (size_t i = 0; i < paramCount; ++i) {
                     const auto& param = funcDecl->params.at(i);
@@ -298,13 +339,16 @@ public:
                     gen->m_output << "   mov rax, QWORD [rsp + " << (paramCount * 8) << "]\n";
                     gen->push("rax");
 
-                    gen->m_vars.insert({param->ident.val, Var{ gen->m_stackSize }});
+                    gen->m_vars.insert({param->ident.val, Var{ .m_stackLoc = gen->m_stackSize }});
                 }
 
                 gen->genScope(funcDecl->scope);
-
+                if (gen->m_funcState != FuncState::RETURNED) {
+                    std::cerr << "No return statement in " << funcDecl->ident.val << "\n";
+                    exit(1);
+                }
+                gen->m_funcState = FuncState::NONE;
                 gen->retCleanup();
-                gen->m_output << "   ret\n";
 
                 // exit func context
                 gen->scopeEnd();
@@ -314,6 +358,13 @@ public:
             }
 
             void operator()(const NodeStmtReturn* stmtRet) {
+
+                if (gen->m_funcState == FuncState::NONE) {
+                    std::cerr << "Return outside of function\n";
+                    exit(1);
+                }
+                gen->m_funcState = FuncState::RETURNED;
+                
                 gen->genExpr(stmtRet->expr);
                 gen->pop("rax");
                 gen->retCleanup();
@@ -372,17 +423,26 @@ public:
 
     [[nodiscard]] std::string genProg() {
 
-        m_output << "global _start\n_start:\n";
+        m_output.set(Switch::Out::PROG);
 
         for (const NodeStmt* stmt : m_prog.stmts) {
             genStmt(*stmt);
         }
 
-        m_output << "   mov rax, 60\n";
-        m_output << "   mov rdi, 0\n";
-        m_output << "   syscall\n";
+        std::stringstream out;
 
-        return m_output.str();
+        out << "section .bss\n"   << m_output.getStr(Switch::Out::GLOBALS) << "\n";
+
+        
+        out << "section .text\n" << m_output.getStr(Switch::Out::FUNCS);
+
+        out << "global _start\n_start:\n"
+            << m_output.getStr(Switch::Out::PROG)
+            << "   mov rax, 60\n"
+            << "   mov rdi, 0\n"
+            << "   syscall\n";
+
+        return out.str();
     }
 
 private:
@@ -424,7 +484,20 @@ private:
 private:
 
     struct Var {
-        size_t m_stackLoc;
+        bool isGlobal{};
+        size_t m_stackLoc{}; // !Global
+        std::string label; // Global
+    };
+
+    struct Func {
+        const NodeStmtFuncDecl* funcPtr;
+        std::string label;
+    };
+
+    enum class FuncState : uint8_t {
+        NONE = 0,
+        IN_FUNC,
+        RETURNED
     };
 
     template<typename T>
@@ -460,17 +533,52 @@ private:
 
             throw std::out_of_range("Not found");
         }
+
+        bool isGlobal() {
+            return scopes.size() == 1;
+        }
+    };
+
+    struct Switch {
+        enum class Out : size_t { PROG, FUNCS, GLOBALS };
+    private:
+        std::array<std::stringstream, 3> buf{};
+        Out curr = Out::PROG;
+
+        std::stringstream& ss(Out out) {
+            return buf.at(static_cast<std::size_t>(out));
+        }
+
+    public:
+        void set(Out out) {
+            curr = out;
+        }
+
+        template<typename T>
+        Switch& operator<<(const T& val) {
+            ss(curr) << val;
+            return *this;
+        }
+
+        std::string getStr(Out out) {
+            return ss(out).str();
+        }
+
+        friend void operator<<(std::stringstream& os, Switch& sw) {
+            os << sw.getStr(sw.curr);
+        }
     };
 
 
     const NodeProg m_prog;
-    std::stringstream m_output;
+    Switch m_output;
     size_t m_stackSize = 0;
     ScopeStack<Var> m_vars{};
 
-    ScopeStack<const NodeStmtFuncDecl*> m_funcs{};
-    std::stringstream m_funcsOut;
+    ScopeStack<Func> m_funcs{};
     std::vector<size_t> m_funcBaseStack;
+    FuncState m_funcState = FuncState::NONE;
+
 
     size_t labelCounter = 0;
 };

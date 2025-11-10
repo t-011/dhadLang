@@ -1,9 +1,24 @@
+section .bss
+_g_label0:
+    resq 1
+
+section .text
 global _start
 _start:
    mov rax, 1
    push rax
-   jmp overlabel0func
-func:
+   pop rax
+   mov QWORD [_g_label0], rax
+   mov rax, 3
+   push rax
+   push QWORD [rsp + 0]
+   mov rax, 60
+   pop rdi
+   syscall
+   add rsp, 0
+   add rsp, 8
+   jmp overlabel2func
+funclabel1:
    mov rax, QWORD [rsp + 32]
    push rax
    mov rax, QWORD [rsp + 32]
@@ -28,7 +43,7 @@ func:
    pop rax
    add rax, rbx
    push rax
-   push QWORD [rsp + 40]
+   push QWORD [_g_label0]
    pop rbx
    pop rax
    add rax, rbx
@@ -39,7 +54,7 @@ func:
    add rsp, 0
    ret
    add rsp, 32
-overlabel0func:
+overlabel2func:
    mov rax, 3
    push rax
    mov rax, 4
@@ -48,7 +63,7 @@ overlabel0func:
    push rax
    mov rax, 3
    push rax
-   call func
+   call funclabel1
    add rsp, 32
    push rax
    mov rax, 60
