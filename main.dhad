@@ -3,8 +3,9 @@ let h = 1;
 {
     let zh = 3;
     {
-        exit(zh);
+        h = 2;
     }
+    
 }
 func(x, y, z, q) {
     return x + y + z + q + h;

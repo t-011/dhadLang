@@ -301,7 +301,13 @@ public:
                 gen->pop("rax");
 
                 const auto& var = gen->m_vars.at(stmtAssign->ident.val);
-                gen->m_output << "   mov QWORD [rsp + " << (gen->m_stackSize - var.m_stackLoc) * 8 << "], rax\n";
+
+                if (var.isGlobal) {
+                    gen->m_output << "   mov QWORD [" << var.label << "], rax\n";
+                }
+                else {
+                    gen->m_output << "   mov QWORD [rsp + " << (gen->m_stackSize - var.m_stackLoc) * 8 << "], rax\n";
+                }
             }
 
             void operator()(const NodeStmtFuncDecl* funcDecl) {
@@ -315,19 +321,16 @@ public:
                     exit(1);
                 }
 
+                // states
                 gen->m_funcState = FuncState::IN_FUNC;
+                gen->m_output.set(Switch::Out::FUNCS);
 
                 std::string funcLabel = "func" + gen->createLabel();
                 gen->m_funcs.insert({funcDecl->ident.val, {funcDecl, funcLabel}});
-                
-                std::string jmpLabel = "over" + funcLabel;
-                gen->m_output << "   jmp " << jmpLabel << "\n";
-
+                gen->m_output << funcLabel << ":\n";
                 gen->m_funcBaseStack.push_back(gen->m_stackSize);
                 gen->scopeBegin();
 
-                
-                gen->m_output << funcLabel << ":\n";
                 size_t paramCount = funcDecl->params.size();
                 for (size_t i = 0; i < paramCount; ++i) {
                     const auto& param = funcDecl->params.at(i);
@@ -347,14 +350,15 @@ public:
                     std::cerr << "No return statement in " << funcDecl->ident.val << "\n";
                     exit(1);
                 }
-                gen->m_funcState = FuncState::NONE;
                 gen->retCleanup();
 
                 // exit func context
                 gen->scopeEnd();
                 gen->m_funcBaseStack.pop_back();
                 
-                gen->m_output << jmpLabel << ":\n";
+                // reset states
+                gen->m_output.set(Switch::Out::PROG);
+                gen->m_funcState = FuncState::NONE;
             }
 
             void operator()(const NodeStmtReturn* stmtRet) {
@@ -364,9 +368,15 @@ public:
                     exit(1);
                 }
                 gen->m_funcState = FuncState::RETURNED;
-                
-                gen->genExpr(stmtRet->expr);
-                gen->pop("rax");
+
+                if (stmtRet->expr) {
+                    gen->genExpr(stmtRet->expr.value());
+                    gen->pop("rax");
+                }
+                else {
+                    gen->m_output << "   mov rax, 0\n";
+                }
+
                 gen->retCleanup();
                 gen->m_output << "   ret\n";
             }
@@ -434,7 +444,7 @@ public:
         out << "section .bss\n"   << m_output.getStr(Switch::Out::GLOBALS) << "\n";
 
         
-        out << "section .text\n" << m_output.getStr(Switch::Out::FUNCS);
+        out << "section .text\n" << m_output.getStr(Switch::Out::FUNCS) << "\n";
 
         out << "global _start\n_start:\n"
             << m_output.getStr(Switch::Out::PROG)

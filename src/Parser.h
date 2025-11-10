@@ -25,7 +25,7 @@ struct NodeTermFuncCall {
 };
 
 struct NodeStmtReturn {
-    NodeExpr* expr;
+    std::optional<NodeExpr*> expr;
 };
 
 struct NodeTermIntLit {
