@@ -329,7 +329,7 @@ public:
                 gen->m_funcs.insert({funcDecl->ident.val, {funcDecl, funcLabel}});
                 gen->m_output << funcLabel << ":\n";
                 gen->m_funcBaseStack.push_back(gen->m_stackSize);
-                gen->scopeBegin();
+                gen->m_vars.push_scope();
 
                 size_t paramCount = funcDecl->params.size();
                 for (size_t i = 0; i < paramCount; ++i) {
@@ -353,7 +353,7 @@ public:
                 gen->retCleanup();
 
                 // exit func context
-                gen->scopeEnd();
+                gen->m_vars.pop_scope();
                 gen->m_funcBaseStack.pop_back();
                 
                 // reset states

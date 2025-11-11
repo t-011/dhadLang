@@ -37,7 +37,6 @@ funclabel1:
    add rsp, 32
    ret
    add rsp, 0
-   add rsp, 32
 
 global _start
 _start:

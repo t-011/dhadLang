@@ -5,6 +5,8 @@
 #include <cstring>
 #include <cctype>
 #include <optional>
+#include <locale>
+#include <codecvt>
 
 enum class TokenType {
     ERROR = 0,
@@ -45,7 +47,7 @@ struct Token {
 class Tokenizer {
 
 public:
-    Tokenizer(std::string src, size_t len)
+    Tokenizer(std::u32string src, size_t len)
         : m_src(std::move(src)), m_srcLen(len) {}
 
 
@@ -53,140 +55,125 @@ public:
         
         std::vector<Token> tokens;
 
-        std::string buffer;
+        std::u32string buffer;
         while(peek().has_value()) {
-            char curr = consume();
+            char32_t curr = consume();
 
-            if (isspace(curr)) {
+            if (isAsciiSpace(curr)) {
                 continue;
             }
 
-            else if (isalpha(curr)) {
+            else if (isAsciiAlpha(curr) || isArabic(curr)) {
                 buffer.push_back(curr);
-                while (peek() && isalnum(peek().value())) {
+                while (peek() && (isAsciiAlnum(peek().value()) || isArabic(peek().value()))) {
                     buffer.push_back(consume());
                 }
 
-                if (buffer == "exit") {
-                    tokens.push_back({TokenType::EXIT, "exit"});
+                if (buffer == U"خروج") {
+                    tokens.push_back({TokenType::EXIT});
                 }
-                else if (buffer == "let") {
-                    tokens.push_back({TokenType::LET, "let"});
+                else if (buffer == U"دع") {
+                    tokens.push_back({TokenType::LET});
                 }
-                else if (buffer == "if") {
-                    tokens.push_back({TokenType::IF_, "if"});
+                else if (buffer == U"اذا") {
+                    tokens.push_back({TokenType::IF_});
                 }
-                else if (buffer == "elif") { 
-                    tokens.push_back({TokenType::ELIF, "elif"});
+                else if (buffer == U"واذا") { 
+                    tokens.push_back({TokenType::ELIF});
                 }
-                else if (buffer == "else") { 
-                    tokens.push_back({TokenType::ELSE_, "else"});
+                else if (buffer == U"وإلا") { 
+                    tokens.push_back({TokenType::ELSE_});
                 }
-                else if (buffer == "while") {
-                    tokens.push_back({TokenType::WHILE, "while"});
+                else if (buffer == U"بينما") {
+                    tokens.push_back({TokenType::WHILE});
                 }
-                else if (buffer == "return") {
-                    tokens.push_back({TokenType::RETURN, "return"});
+                else if (buffer == U"ارجع") {
+                    tokens.push_back({TokenType::RETURN});
                 }
                 else {
-                    tokens.push_back({TokenType::IDENT, buffer});
+                    tokens.push_back({TokenType::IDENT, to_utf8(buffer)});
                 }
                 buffer.clear();
             }
 
-            else if (isdigit(curr)) {
+            else if (isAsciiDigit(curr)) {
                 buffer.push_back(curr);
-                while (peek() && isdigit(peek().value())) {
+                while (peek() && isAsciiDigit(peek().value())) {
                     buffer.push_back(consume());
                 }
 
-                tokens.push_back({TokenType::INT_LIT, buffer});
+                tokens.push_back({TokenType::INT_LIT, to_utf8(buffer)});
                 buffer.clear();
             }
 
             else if (curr == '=') {
                 if (peek() && peek().value() == '=') {
                     consume();
-                    tokens.push_back({TokenType::EQEQ, "=="});
+                    tokens.push_back({TokenType::EQEQ});
                 } else {
-                    tokens.push_back({TokenType::EQUAL, "="});
+                    tokens.push_back({TokenType::EQUAL});
                 }
-                continue;
             }
 
             else if (curr == ';') {
-                tokens.push_back({TokenType::SEMI, ";"});
-                continue;
+                tokens.push_back({TokenType::SEMI});
             }
 
             else if (curr == '(') {
-                tokens.push_back({TokenType::OPEN_PAREN, "("});
-                continue;
+                tokens.push_back({TokenType::OPEN_PAREN});
             }
 
             else if (curr == ')') {
-                tokens.push_back({TokenType::CLOSE_PAREN, ")"});
-                continue;
+                tokens.push_back({TokenType::CLOSE_PAREN});
             }
 
             else if (curr == '{') {
-                tokens.push_back({TokenType::OPEN_CURLY, "{"});
-                continue;
+                tokens.push_back({TokenType::OPEN_CURLY});
             }
 
             else if (curr == '}') {
-                tokens.push_back({TokenType::CLOSE_CURLY, "}"});
-                continue;
+                tokens.push_back({TokenType::CLOSE_CURLY});
             }
 
             else if (curr == '+') {
-                tokens.push_back({TokenType::PLUS, "+"});
-                continue;
+                tokens.push_back({TokenType::PLUS});
             }
 
             else if (curr == '*') {
-                tokens.push_back({TokenType::MULT, "*"});
-                continue;
+                tokens.push_back({TokenType::MULT});
             }
 
             else if (curr == '-') {
-                tokens.push_back({TokenType::SUB, "-"});
-                continue;
+                tokens.push_back({TokenType::SUB});
             }
 
             else if (curr == '/') {
-                tokens.push_back({TokenType::DIV, "/"});
-                continue;
+                tokens.push_back({TokenType::DIV});
             }
 
             else if (curr == '%') {
-                tokens.push_back({TokenType::MOD, "%"});
-                continue;
+                tokens.push_back({TokenType::MOD});
             }
 
             else if (curr == '!') {
                 if (peek() && peek().value() == '=') {
                     consume();
-                    tokens.push_back({TokenType::BANG_EQ, "!="});
+                    tokens.push_back({TokenType::BANG_EQ});
                 } else {
-                    tokens.push_back({TokenType::BANG, "!"});
+                    tokens.push_back({TokenType::BANG});
                 }
-                continue;
             }
 
             else if (curr == '>') {
-                tokens.push_back({TokenType::GR_THAN, ">"});
-                continue;
+                tokens.push_back({TokenType::GR_THAN});
             }
 
             else if (curr == '<') {
-                tokens.push_back({TokenType::LS_THAN, "<"});
-                continue;
+                tokens.push_back({TokenType::LS_THAN});
             }
 
             else if (curr == ',') {
-                tokens.push_back({TokenType::COMMA, ","});
-                continue;
+                tokens.push_back({TokenType::COMMA});
             }
 
             else {
@@ -200,7 +187,7 @@ public:
     }
 
 private:
-    std::optional<char> peek(unsigned int ahead = 0) const {
+    std::optional<char32_t> peek(unsigned int ahead = 0) const {
 
         if (m_pos + ahead >= m_src.size()) {
             return {};
@@ -211,12 +198,37 @@ private:
         }
     }
 
-    char consume() {
+    char32_t consume() {
         return m_src.at(m_pos++);
     }
 
+    bool isArabic(char32_t c) {
+        return (c >= 0x0600 && c <= 0x06FF);
+    }
+
+    std::string to_utf8(const std::u32string& in) {
+        std::wstring_convert<std::codecvt_utf8<char32_t>, char32_t> conv;
+        return conv.to_bytes(in);
+    }
+
+    bool isAsciiAlpha(char32_t c) {
+        return (c >= U'a' && c <= U'z') || (c >= U'A' && c <= U'Z');
+    }
+
+    bool isAsciiDigit(char32_t c) {
+        return (c >= U'0' && c <= U'9');
+    }
+
+    bool isAsciiAlnum(char32_t c) {
+        return isAsciiAlpha(c) || isAsciiDigit(c);
+    }
+
+    bool isAsciiSpace(char32_t c) {
+        return c == U' ' || c == U'\t' || c == U'\n' || c == U'\r' || c == U'\f' || c == U'\v';
+    }
+
 private:
-    std::string m_src;
+    std::u32string m_src;
     size_t m_srcLen;
     size_t m_pos = 0;
 };
