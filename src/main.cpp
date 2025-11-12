@@ -12,12 +12,14 @@ std::u32string readUtf8FileToU32(const std::string& path);
 
 int main(int argc, char* argv[]) {
 
-    // if (argc < 2) {
-    //     std::cerr << "Too few inputs" << std::endl;
-    //     return 1;
-    // }
+    if (argc < 2) {
+        std::cerr << "Too few inputs" << std::endl;
+        return 1;
+    }
 
-    std::u32string contents = readUtf8FileToU32("main.dhad");
+    std::string fileName = argv[1];
+
+    std::u32string contents = readUtf8FileToU32(fileName);
 
     Tokenizer tk(contents, contents.size());
     auto tokens = tk.tokenize(); 
@@ -30,9 +32,9 @@ int main(int argc, char* argv[]) {
         exit(1);
     }
 
-    Generator g(prog.value());
 
     {
+        Generator g(prog.value());
         std::ofstream file("out.asm");
         file << g.genProg();
     }
