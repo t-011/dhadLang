@@ -47,7 +47,7 @@ int main(int argc, char* argv[]) {
 
 
 std::u32string readUtf8FileToU32(const std::string& path) {
-    std::ifstream file(path, std::ios::binary);  // don’t use std::ios::in alone!
+    std::ifstream file(path, std::ios::binary);
     if (!file)
         throw std::runtime_error("Failed to open file");
 
