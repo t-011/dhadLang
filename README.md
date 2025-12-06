@@ -1,16 +1,30 @@
 # DhadLang
 
-### Overview
-DhadLang is a very simple arabic Procedural-like programming language. It helped me understand compilers on a deeper level, from tokenization
-and parsing, up to the generation of assembly.
+A minimal Arabic-inspired programming language compiler built in C++. Compiles to x64 assembly.
 
-### Usage
-#### Pre-reqs
-DhadLang's compiler runs on an x64 processor on a linux system.
+## What is DhadLang?
 
-#### How to run your own dhadLang file
+DhadLang is a procedural language designed as a learning project for compiler development. It covers tokenization, parsing, and x64 assembly generation.
 
-Your file should be in: dhadLang/
+## Requirements
 
-Then run (in dhadLang): ./dhad "your-file-name"; ./out; echo $?
-To see the exit code the code exited with.
+- Linux (x64)
+- Make
+- GCC/G++ (for compilation)
+
+## Quick Start
+
+1. Place your `.dhad` file in the project root
+2. Compile and run:
+```bash
+   ./dhad your-file-name
+   ./out
+   echo $?  # View exit code
+```
+
+## Build
+```bash
+make
+```
+
+This project is a learning exercise in compiler design.
