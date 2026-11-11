@@ -111,17 +111,17 @@ public:
                 }
             }
 
-            else if (isAsciiDigit(curr)) {
-                std::string num(1, static_cast<char>(curr));
-                while (peek() && isAsciiDigit(peek().value())) {
-                    num.push_back(static_cast<char>(consume()));
+            else if (digitValue(curr) >= 0) {
+                std::string num(1, static_cast<char>('0' + digitValue(curr)));
+                while (peek() && digitValue(peek().value()) >= 0) {
+                    num.push_back(static_cast<char>('0' + digitValue(consume())));
                 }
                 add(TokenType::INT_LIT, num);
             }
 
             else if (isAsciiAlpha(curr) || isArabic(curr)) {
                 std::u32string word(1, curr);
-                while (peek() && (isAsciiAlnum(peek().value()) || isArabic(peek().value()))) {
+                while (peek() && (isAsciiAlnum(peek().value()) || isArabic(peek().value()) || digitValue(peek().value()) >= 0)) {
                     word.push_back(consume());
                 }
 
@@ -185,8 +185,17 @@ private:
         return m_src.at(m_pos++);
     }
 
+    // Arabic letters and marks. U+0660–066D (digits and number signs) are
+    // handled separately.
     static bool isArabic(char32_t c) {
-        return c >= 0x0600 && c <= 0x06FF;
+        return c >= 0x0600 && c <= 0x06FF && !(c >= 0x0660 && c <= 0x066D);
+    }
+
+    // 0–9 and Arabic-Indic ٠–٩; -1 for anything else
+    static int digitValue(char32_t c) {
+        if (c >= U'0' && c <= U'9') return static_cast<int>(c - U'0');
+        if (c >= 0x0660 && c <= 0x0669) return static_cast<int>(c - 0x0660);
+        return -1;
     }
 
     std::string to_utf8(const std::u32string& in) {
@@ -198,12 +207,8 @@ private:
         return (c >= U'a' && c <= U'z') || (c >= U'A' && c <= U'Z');
     }
 
-    static bool isAsciiDigit(char32_t c) {
-        return c >= U'0' && c <= U'9';
-    }
-
     static bool isAsciiAlnum(char32_t c) {
-        return isAsciiAlpha(c) || isAsciiDigit(c);
+        return isAsciiAlpha(c) || (c >= U'0' && c <= U'9');
     }
 
     static bool isAsciiSpace(char32_t c) {

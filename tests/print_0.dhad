@@ -1,0 +1,6 @@
+# comments are ignored, like this one
+اطبع(42);
+اطبع(-7);
+اطبع(0);
+اطبع(٣ * ٤);   # Arabic-Indic digits
+اطبع(-9223372036854775807 - 1);
