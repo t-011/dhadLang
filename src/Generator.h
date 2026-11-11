@@ -388,6 +388,11 @@ public:
                 gen->genScope(stmtScope);
             }
 
+            void operator()(const NodeStmtExpr* stmtExpr) {
+                gen->genExpr(stmtExpr->expr);
+                gen->pop("rax"); // discard result
+            }
+
             void operator()(const NodeStmtIf* stmtIf) {
                 
                 gen->genExpr(stmtIf->expr);
