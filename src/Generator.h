@@ -71,6 +71,11 @@ public:
 
     void genBinExpr(const BinExpr* binExpr) {
 
+        if (binExpr->op == TokenType::AND || binExpr->op == TokenType::OR) {
+            genShortCircuit(binExpr);
+            return;
+        }
+
         genExpr(binExpr->lhs);
         genExpr(binExpr->rhs);
 
@@ -98,6 +103,28 @@ public:
             default: break; // the parser only builds BinExpr for operators in precedence()
         }
 
+        push("rax");
+    }
+
+    // && and || skip the right side once the left side decides the result
+    void genShortCircuit(const BinExpr* binExpr) {
+        bool isAnd = binExpr->op == TokenType::AND;
+        std::string shortLabel = createLabel();
+        std::string endLabel = createLabel();
+
+        for (const NodeExpr* side : {binExpr->lhs, binExpr->rhs}) {
+            genExpr(side);
+            pop("rax");
+            out("cmp rax, 0");
+            out((isAnd ? "je " : "jne ") + shortLabel);
+        }
+        out(isAnd ? "mov rax, 1" : "mov rax, 0");
+        out("jmp " + endLabel);
+
+        label(shortLabel);
+        out(isAnd ? "mov rax, 0" : "mov rax, 1");
+
+        label(endLabel);
         push("rax");
     }
 

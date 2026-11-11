@@ -41,7 +41,9 @@ enum class TokenType {
     SUB,
     MULT,
     DIV,
-    MOD
+    MOD,
+    AND,
+    OR
 };
 
 struct Token {
@@ -148,6 +150,16 @@ public:
                     case U'!': addPair(U'=', TokenType::BANG_EQ, TokenType::BANG); break;
                     case U'>': addPair(U'=', TokenType::GR_EQ, TokenType::GR_THAN); break;
                     case U'<': addPair(U'=', TokenType::LS_EQ, TokenType::LS_THAN); break;
+                    case U'&':
+                        if (peek() != U'&') error(m_line, "Expected '&&'");
+                        consume();
+                        add(TokenType::AND);
+                        break;
+                    case U'|':
+                        if (peek() != U'|') error(m_line, "Expected '||'");
+                        consume();
+                        add(TokenType::OR);
+                        break;
                     default:
                         error(m_line, "Invalid character");
                 }
