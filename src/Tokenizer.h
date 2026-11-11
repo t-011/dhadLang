@@ -63,6 +63,12 @@ public:
                 continue;
             }
 
+            else if (curr == U'#') { // comment until end of line
+                while (peek() && peek().value() != U'\n') {
+                    consume();
+                }
+            }
+
             else if (isAsciiAlpha(curr) || isArabic(curr)) {
                 buffer.push_back(curr);
                 while (peek() && (isAsciiAlnum(peek().value()) || isArabic(peek().value()))) {
