@@ -1,5 +1,5 @@
 
-dhad : src/main.cpp
+dhad : src/main.cpp $(wildcard src/*.h)
 	g++ -Wall src/main.cpp -g -o dhad -std=c++20
 
 
