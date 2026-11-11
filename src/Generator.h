@@ -9,6 +9,11 @@
 
 #include "Parser.h"
 
+// Stack layout: _start and every function get an rbp frame. A local is the
+// value its `دع` pushed, so it lives at a fixed [rbp - 8*k] no matter what is
+// pushed later. Parameters sit above the return address at [rbp + 16 + ...].
+// m_stackSize counts slots pushed in the current frame; it only decides
+// which k the next local gets.
 class Generator {
 public:
     Generator(NodeProg root)
@@ -61,7 +66,7 @@ public:
                 }
 
                 gen->out("call " + func->second.label);
-                gen->drop(funcCall->args.size()); // the caller pops the arguments
+                gen->drop(funcCall->args.size());
                 gen->push("rax");
             }
         };
@@ -221,18 +226,19 @@ public:
                     gen->m_bss << lab << ":\n    resq 1\n";
                     gen->out("mov QWORD [" + lab + "], rax");
 
-                    gen->m_vars.insert({stmtLet->ident.val, Var{ .isGlobal = true, .label = lab }});
+                    gen->m_vars.insert({ident.val, Var{"QWORD [" + lab + "]"}});
                 }
                 else { // the value just pushed stays on the stack as the variable
-                    gen->m_vars.insert({stmtLet->ident.val, Var{ .m_stackLoc = gen->m_stackSize }});
+                    long slot = static_cast<long>(gen->m_stackSize);
+                    gen->m_vars.insert({ident.val, Var{rbpSlot(-8 * slot)}});
                 }
             }
 
             void operator()(const NodeStmtAssign* stmtAssign) const {
+                std::string addr = gen->lookup(stmtAssign->ident);
                 gen->genExpr(stmtAssign->expr);
                 gen->pop("rax");
-                // the address is rsp-relative, so look it up after the pop
-                gen->out("mov " + gen->lookup(stmtAssign->ident) + ", rax");
+                gen->out("mov " + addr + ", rax");
             }
 
             void operator()(const NodeStmtFuncDecl* funcDecl) const {
@@ -245,37 +251,37 @@ public:
                 }
 
                 std::string funcLabel = "func" + gen->createLabel();
-                gen->m_funcs.insert({funcDecl->ident.val, Func{funcDecl->params.size(), funcLabel}});
+                gen->m_funcs.insert({ident.val, Func{funcDecl->params.size(), funcLabel}});
 
                 // enter function context
                 gen->m_out = &gen->m_funcText;
                 gen->m_inFunc = true;
+                size_t outerStackSize = gen->m_stackSize;
+                gen->m_stackSize = 0;
 
                 gen->label(funcLabel);
-                gen->m_funcBaseStack.push_back(gen->m_stackSize);
-                gen->m_vars.push_scope();
+                gen->out("push rbp");
+                gen->out("mov rbp, rsp");
 
+                gen->m_vars.push_scope();
                 size_t paramCount = funcDecl->params.size();
                 for (size_t i = 0; i < paramCount; ++i) {
                     const Token& param = funcDecl->params[i];
                     if (gen->m_vars.back().contains(param.val)) {
                         error(param.line, "Parameter already used: " + param.val);
                     }
-                    // copy each argument from above the return address
-                    gen->out("mov rax, QWORD [rsp + " + std::to_string(paramCount * 8) + "]");
-                    gen->push("rax");
-                    gen->m_vars.insert({param.val, Var{ .m_stackLoc = gen->m_stackSize }});
+                    // args are pushed left to right, so the last one is nearest the return address
+                    long offset = 16 + 8 * static_cast<long>(paramCount - 1 - i);
+                    gen->m_vars.insert({param.val, Var{rbpSlot(offset)}});
                 }
 
                 gen->genScope(funcDecl->scope);
-                // falling off the end returns 0 instead of running into the next label
-                gen->retCleanup();
-                gen->out("mov rax, 0");
-                gen->out("ret");
+                gen->out("mov rax, 0"); // falling off the end returns 0
+                gen->leave();
 
                 // exit function context
                 gen->m_vars.pop_scope();
-                gen->m_funcBaseStack.pop_back();
+                gen->m_stackSize = outerStackSize;
                 gen->m_inFunc = false;
                 gen->m_out = &gen->m_text;
             }
@@ -293,10 +299,7 @@ public:
                     gen->out("mov rax, 0");
                 }
 
-                // emit the cleanup but keep m_stackSize: code after an early return still needs it
-                size_t toPop = gen->m_stackSize - gen->m_funcBaseStack.back();
-                gen->out("add rsp, " + std::to_string(toPop * 8));
-                gen->out("ret");
+                gen->leave(); // m_stackSize is untouched: code after an early return still uses it
             }
 
             void operator()(const NodeStmtExpr* stmtExpr) const {
@@ -363,6 +366,7 @@ public:
         asmOut << "section .text\n" << PRINT_ROUTINE << "\n" << m_funcText.str() << "\n";
 
         asmOut << "global _start\n_start:\n"
+               << "   mov rbp, rsp\n"
                << m_text.str()
                << "   mov rax, 60\n"
                << "   mov rdi, 0\n"
@@ -431,6 +435,12 @@ private:
         m_stackSize -= n;
     }
 
+    void leave() {
+        out("mov rsp, rbp");
+        out("pop rbp");
+        out("ret");
+    }
+
     std::string createLabel() {
         return "label" + std::to_string(labelCounter++);
     }
@@ -439,33 +449,18 @@ private:
         if (!m_vars.contains(ident.val)) {
             error(ident.line, "Undeclared identifier: " + ident.val);
         }
-        return varAddr(m_vars.at(ident.val));
+        return m_vars.at(ident.val).addr;
     }
 
-    void retCleanup() {
-        size_t funcBase = m_funcBaseStack.back();
-        size_t toPop = m_stackSize - funcBase;
-        if (toPop > 0) {
-            out("add rsp, " + std::to_string(toPop * 8));
-            m_stackSize = funcBase;
-        }
+    static std::string rbpSlot(long offset) {
+        return "QWORD [rbp " + std::string(offset < 0 ? "- " : "+ ") + std::to_string(offset < 0 ? -offset : offset) + "]";
     }
 
 private:
 
     struct Var {
-        bool isGlobal{};
-        size_t m_stackLoc{}; // !Global
-        std::string label; // Global
+        std::string addr; // operand for push/mov, e.g. "QWORD [rbp - 8]"
     };
-
-    // operand for push/mov; locals are addressed relative to the current rsp
-    std::string varAddr(const Var& var) const {
-        if (var.isGlobal) {
-            return "QWORD [" + var.label + "]";
-        }
-        return "QWORD [rsp + " + std::to_string((m_stackSize - var.m_stackLoc) * 8) + "]";
-    }
 
     struct Func {
         size_t paramCount;
@@ -522,7 +517,6 @@ private:
     size_t m_stackSize = 0;
     ScopeStack<Var> m_vars{};
     std::unordered_map<std::string, Func> m_funcs;
-    std::vector<size_t> m_funcBaseStack;
     bool m_inFunc = false;
 
     size_t labelCounter = 0;
