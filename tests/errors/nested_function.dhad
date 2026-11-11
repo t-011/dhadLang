@@ -1,0 +1,4 @@
+# expect: line 3: Functions must be declared in global scope
+{
+    دالة ف() { }
+}

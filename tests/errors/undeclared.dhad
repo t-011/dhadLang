@@ -1,0 +1,3 @@
+# expect: line 3: Undeclared identifier: س
+دع ا = 1;
+خروج(س);

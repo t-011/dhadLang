@@ -1,0 +1,3 @@
+# expect: line 3: Identifier already used: ا
+دع ا = 1;
+دع ا = 2;

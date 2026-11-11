@@ -1,0 +1,3 @@
+# expect: line 3: Break/continue outside of a loop
+دع ا = 1;
+توقف;
