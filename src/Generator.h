@@ -380,7 +380,9 @@ public:
                     gen->m_output << "   mov rax, 0\n";
                 }
 
-                gen->retCleanup();
+                // emit the cleanup but keep m_stackSize: code after an early return still needs it
+                size_t toPop = gen->m_stackSize - gen->m_funcBaseStack.back();
+                gen->m_output << "   add rsp, " << (toPop * 8) << "\n";
                 gen->m_output << "   ret\n";
             }
 
