@@ -135,8 +135,8 @@ public:
 
             else {
                 switch (curr) {
-                    case U';': add(TokenType::SEMI); break;
-                    case U',': add(TokenType::COMMA); break;
+                    case U';': case U'؛': add(TokenType::SEMI); break;
+                    case U',': case U'،': add(TokenType::COMMA); break;
                     case U'(': add(TokenType::OPEN_PAREN); break;
                     case U')': add(TokenType::CLOSE_PAREN); break;
                     case U'{': add(TokenType::OPEN_CURLY); break;
@@ -185,10 +185,10 @@ private:
         return m_src.at(m_pos++);
     }
 
-    // Arabic letters and marks. U+0660–066D (digits and number signs) are
-    // handled separately.
+    // Arabic letters and marks. U+0600–061F (punctuation such as ، and ؛) and
+    // U+0660–066D (digits and number signs) are handled separately.
     static bool isArabic(char32_t c) {
-        return c >= 0x0600 && c <= 0x06FF && !(c >= 0x0660 && c <= 0x066D);
+        return c >= 0x0620 && c <= 0x06FF && !(c >= 0x0660 && c <= 0x066D);
     }
 
     // 0–9 and Arabic-Indic ٠–٩; -1 for anything else
