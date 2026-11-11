@@ -349,11 +349,10 @@ public:
                 }
 
                 gen->genScope(funcDecl->scope);
-                if (gen->m_funcState != FuncState::RETURNED) {
-                    std::cerr << "No return statement in " << funcDecl->ident.val << "\n";
-                    exit(1);
-                }
+                // falling off the end returns 0 instead of running into the next label
                 gen->retCleanup();
+                gen->m_output << "   mov rax, 0\n";
+                gen->m_output << "   ret\n";
 
                 // exit func context
                 gen->m_vars.pop_scope();
@@ -370,8 +369,6 @@ public:
                     std::cerr << "Return outside of function\n";
                     exit(1);
                 }
-                gen->m_funcState = FuncState::RETURNED;
-
                 if (stmtRet->expr) {
                     gen->genExpr(stmtRet->expr.value());
                     gen->pop("rax");
@@ -516,8 +513,7 @@ private:
 
     enum class FuncState : uint8_t {
         NONE = 0,
-        IN_FUNC,
-        RETURNED
+        IN_FUNC
     };
 
     template<typename T>
