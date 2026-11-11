@@ -51,54 +51,11 @@ struct NodeExpr {
     std::variant<NodeTerm*, BinExpr*> var;
 };
 
-struct BinExprAdd {
-    NodeExpr* lhs;
-    NodeExpr* rhs;
-};
-
-struct BinExprSub {
-    NodeExpr* lhs;
-    NodeExpr* rhs;
-};
-
-struct BinExprMult {
-    NodeExpr* lhs;
-    NodeExpr* rhs;
-};
-
-struct BinExprDiv {
-    NodeExpr* lhs;
-    NodeExpr* rhs;
-};
-
-struct BinExprMod {
-    NodeExpr* lhs;
-    NodeExpr* rhs;
-};
-
-struct BinExprEqTo {
-    NodeExpr* lhs;
-    NodeExpr* rhs;
-};
-
-struct BinExprNotEqTo {
-    NodeExpr* lhs;
-    NodeExpr* rhs;
-};
-
-struct BinExprGrThan {
-    NodeExpr* lhs;
-    NodeExpr* rhs;
-};
-
-struct BinExprLsThan {
-    NodeExpr* lhs;
-    NodeExpr* rhs;
-};
-
+// One node for every binary operator; the generator switches on op.
 struct BinExpr {
-    std::variant<BinExprAdd*, BinExprSub*, BinExprDiv*, BinExprMult*, BinExprMod*,
-     BinExprEqTo*, BinExprNotEqTo*, BinExprGrThan*, BinExprLsThan*> var;
+    TokenType op;
+    NodeExpr* lhs;
+    NodeExpr* rhs;
 };
 
 struct NodeStmtExit {
@@ -253,63 +210,11 @@ public:
             }
 
             auto binExpr = m_allocator.alloc<BinExpr>();
-            auto expr = m_allocator.alloc<NodeExpr>();
+            binExpr->op = op.type;
+            binExpr->lhs = lhs;
+            binExpr->rhs = rhs.value();
 
-            if (op.type == TokenType::PLUS) {
-                auto exprAdd = m_allocator.alloc<BinExprAdd>();
-                exprAdd->lhs = lhs;
-                exprAdd->rhs = rhs.value();
-                binExpr->var = exprAdd;
-            }
-            else if (op.type == TokenType::SUB) {
-                auto exprSub = m_allocator.alloc<BinExprSub>();
-                exprSub->lhs = lhs;
-                exprSub->rhs = rhs.value();
-                binExpr->var = exprSub;
-            }
-            else if (op.type == TokenType::MULT) {
-                auto exprMult = m_allocator.alloc<BinExprMult>();
-                exprMult->lhs = lhs;
-                exprMult->rhs = rhs.value();
-                binExpr->var = exprMult;
-            }
-            else if (op.type == TokenType::DIV) {
-                auto exprDiv = m_allocator.alloc<BinExprDiv>();
-                exprDiv->lhs = lhs;
-                exprDiv->rhs = rhs.value();
-                binExpr->var = exprDiv;
-            }
-            else if (op.type == TokenType::MOD) {
-                auto exprMod = m_allocator.alloc<BinExprMod>();
-                exprMod->lhs = lhs;
-                exprMod->rhs = rhs.value();
-                binExpr->var = exprMod;
-            }
-            else if (op.type == TokenType::EQEQ) {
-                auto exprEqTo = m_allocator.alloc<BinExprEqTo>();
-                exprEqTo->lhs = lhs;
-                exprEqTo->rhs = rhs.value();
-                binExpr->var = exprEqTo;
-            }
-            else if (op.type == TokenType::BANG_EQ) {
-                auto exprNEqTo = m_allocator.alloc<BinExprNotEqTo>();
-                exprNEqTo->lhs = lhs;
-                exprNEqTo->rhs = rhs.value();
-                binExpr->var = exprNEqTo;
-            }
-            else if (op.type == TokenType::GR_THAN) {
-                auto exprGrThan = m_allocator.alloc<BinExprGrThan>();
-                exprGrThan->lhs = lhs;
-                exprGrThan->rhs = rhs.value();
-                binExpr->var = exprGrThan;
-            }
-            else if (op.type == TokenType::LS_THAN) {
-                auto exprLsThan = m_allocator.alloc<BinExprLsThan>();
-                exprLsThan->lhs = lhs;
-                exprLsThan->rhs = rhs.value();
-                binExpr->var = exprLsThan;
-            }
-            
+            auto expr = m_allocator.alloc<NodeExpr>();
             expr->var = binExpr;
             lhs = expr;
         }
