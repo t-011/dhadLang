@@ -4,4 +4,4 @@ FROM alpine:3.20
 RUN apk add --no-cache g++ make nasm binutils
 WORKDIR /dhad
 COPY . .
-CMD ["tests/run.sh"]
+CMD ["make", "-s", "test"]
