@@ -51,6 +51,10 @@ struct NodeStmtExit {
     NodeExpr* expr;
 };
 
+struct NodeStmtPrint {
+    NodeExpr* expr;
+};
+
 struct NodeStmtLet {
     Token ident;
     NodeExpr* expr;
@@ -104,7 +108,7 @@ struct NodeStmtWhile {
 };
 
 struct NodeStmt {
-    std::variant<NodeStmtExit*, NodeStmtLet*, NodeScope*, NodeStmtIf*, NodeStmtAssign*,
+    std::variant<NodeStmtExit*, NodeStmtPrint*, NodeStmtLet*, NodeScope*, NodeStmtIf*, NodeStmtAssign*,
                  NodeStmtWhile*, NodeStmtFuncDecl*, NodeStmtReturn*, NodeStmtExpr*> var;
 };
 
@@ -214,6 +218,13 @@ public:
             stmtExit->expr = parseParenExpr();
             expect(TokenType::SEMI, "';'");
             stmt->var = stmtExit;
+        }
+
+        else if (tryConsume(TokenType::PRINT)) {
+            auto stmtPrint = alloc<NodeStmtPrint>();
+            stmtPrint->expr = parseParenExpr();
+            expect(TokenType::SEMI, "';'");
+            stmt->var = stmtPrint;
         }
 
         else if (tryConsume(TokenType::LET)) {

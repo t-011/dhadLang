@@ -27,6 +27,7 @@ enum class TokenType {
     ELSE_,
     WHILE,
     FUNC,
+    PRINT,
     // operators
     EQUAL,
     EQEQ,
@@ -72,6 +73,7 @@ public:
             {U"بينما", TokenType::WHILE},
             {U"ارجع", TokenType::RETURN},
             {U"دالة", TokenType::FUNC},
+            {U"اطبع", TokenType::PRINT},
         };
 
         std::vector<Token> tokens;
