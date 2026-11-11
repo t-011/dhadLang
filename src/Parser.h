@@ -312,7 +312,7 @@ public:
         return ifPred;
     }
 
-    std::optional<NodeProg> parseProg() {
+    NodeProg parseProg() {
 
         NodeProg prog;
         while (peek()) {
