@@ -73,125 +73,32 @@ public:
 
     void genBinExpr(const BinExpr* binExpr) {
 
-        struct BinExprVisitor {
-            Generator* gen;
-            void operator()(const BinExprAdd* exprAdd) {
-                gen->genExpr(exprAdd->lhs);
-                gen->genExpr(exprAdd->rhs);
+        genExpr(binExpr->lhs);
+        genExpr(binExpr->rhs);
 
-                gen->pop("rbx");
-                gen->pop("rax");
+        pop("rbx");
+        pop("rax");
 
-                gen->m_output << "   add rax, rbx\n";
-                
-                gen->push("rax");
-            }
-
-            void operator()(const BinExprSub* exprSub) {
-                gen->genExpr(exprSub->lhs);
-                gen->genExpr(exprSub->rhs);
-
-                gen->pop("rbx");
-                gen->pop("rax");
-
-                gen->m_output << "   sub rax, rbx\n";
-                
-                gen->push("rax");
-            }
-
-            void operator()(const BinExprMult* exprMulti) {
-                gen->genExpr(exprMulti->lhs);
-                gen->genExpr(exprMulti->rhs);
-
-                gen->pop("rbx");
-                gen->pop("rax");
-
-                gen->m_output << "   imul rax, rbx\n";
-                
-                gen->push("rax");
-            }
-
-            void operator()(const BinExprDiv* exprDiv) {
-                gen->genExpr(exprDiv->lhs);
-                gen->genExpr(exprDiv->rhs);
-
-                gen->pop("rbx");
-                gen->pop("rax");
-
-                gen->m_output << "   cqo\n";
-                gen->m_output << "   idiv rbx\n";
-                
-                gen->push("rax");
-            }
-
-            void operator()(const BinExprMod* exprMod) {
-                gen->genExpr(exprMod->lhs);
-                gen->genExpr(exprMod->rhs);
-
-                gen->pop("rbx");
-                gen->pop("rax");
-
-                gen->m_output << "   cqo\n";
-                gen->m_output << "   idiv rbx\n";
-                
-                gen->push("rdx");
-            }
-
-            void operator()(const BinExprEqTo* exprEq) {
-                gen->genExpr(exprEq->lhs);
-                gen->genExpr(exprEq->rhs);
-
-                gen->pop("rbx");
-                gen->pop("rax");
-
-                gen->m_output << "   cmp rax, rbx\n";
-                gen->m_output << "   sete al\n";
-                gen->m_output << "   movzx rax, al\n";
-                gen->push("rax");
-            }
-
-            void operator()(const BinExprNotEqTo* exprNeq) {
-                gen->genExpr(exprNeq->lhs);
-                gen->genExpr(exprNeq->rhs);
-
-                gen->pop("rbx");
-                gen->pop("rax");
-
-                gen->m_output << "   cmp rax, rbx\n";
-                gen->m_output << "   setne al\n";
-                gen->m_output << "   movzx rax, al\n";
-                gen->push("rax");
-            }
-
-            void operator()(const BinExprLsThan* exprLt) {
-                gen->genExpr(exprLt->lhs);
-                gen->genExpr(exprLt->rhs);
-
-                gen->pop("rbx");
-                gen->pop("rax");
-
-                gen->m_output << "   cmp rax, rbx\n";
-                gen->m_output << "   setl al\n";
-                gen->m_output << "   movzx rax, al\n";
-                gen->push("rax");
-            }
-
-            void operator()(const BinExprGrThan* exprGt) {
-                gen->genExpr(exprGt->lhs);
-                gen->genExpr(exprGt->rhs);
-
-                gen->pop("rbx");
-                gen->pop("rax");
-
-                gen->m_output << "   cmp rax, rbx\n";
-                gen->m_output << "   setg al\n";
-                gen->m_output << "   movzx rax, al\n";
-                gen->push("rax");
-            }
+        auto compare = [this](const std::string& setcc) {
+            m_output << "   cmp rax, rbx\n";
+            m_output << "   " << setcc << " al\n";
+            m_output << "   movzx rax, al\n";
         };
 
-        BinExprVisitor visitor{this};
-        std::visit(visitor, binExpr->var);
+        switch (binExpr->op) {
+            case TokenType::PLUS:    m_output << "   add rax, rbx\n"; break;
+            case TokenType::SUB:     m_output << "   sub rax, rbx\n"; break;
+            case TokenType::MULT:    m_output << "   imul rax, rbx\n"; break;
+            case TokenType::DIV:     m_output << "   cqo\n   idiv rbx\n"; break;
+            case TokenType::MOD:     m_output << "   cqo\n   idiv rbx\n   mov rax, rdx\n"; break;
+            case TokenType::EQEQ:    compare("sete"); break;
+            case TokenType::BANG_EQ: compare("setne"); break;
+            case TokenType::LS_THAN: compare("setl"); break;
+            case TokenType::GR_THAN: compare("setg"); break;
+            default: break; // the parser only builds BinExpr for operators in precedence()
+        }
+
+        push("rax");
     }
 
     void genExpr(const NodeExpr* expr)  {
