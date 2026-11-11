@@ -39,8 +39,10 @@ int main(int argc, char* argv[]) {
         file << g.genProg();
     }
 
-    system("nasm -felf64 out.asm");
-    system("ld out.o -o out");
+    if (system("nasm -felf64 out.asm") != 0 || system("ld out.o -o out") != 0) {
+        std::cerr << "Assembling or linking failed" << std::endl;
+        return 1;
+    }
 
     return 0;
 }
