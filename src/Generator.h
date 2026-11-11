@@ -32,6 +32,20 @@ public:
                 gen->genExpr(termParen->expr);
             }
 
+            void operator()(const NodeTermUnary* unary) const {
+                gen->genTerm(unary->term);
+                gen->pop("rax");
+                if (unary->op == TokenType::SUB) {
+                    gen->out("neg rax");
+                }
+                else { // !
+                    gen->out("cmp rax, 0");
+                    gen->out("sete al");
+                    gen->out("movzx rax, al");
+                }
+                gen->push("rax");
+            }
+
             void operator()(const NodeTermFuncCall* funcCall) const {
                 const Token& ident = funcCall->ident;
                 auto func = gen->m_funcs.find(ident.val);

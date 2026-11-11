@@ -9,6 +9,7 @@
 
 struct NodeScope;
 struct NodeExpr;
+struct NodeTerm;
 
 struct NodeTermIntLit {
     Token int_lit;
@@ -27,8 +28,14 @@ struct NodeTermFuncCall {
     std::vector<NodeExpr*> args;
 };
 
+// -x or !x
+struct NodeTermUnary {
+    TokenType op;
+    NodeTerm* term;
+};
+
 struct NodeTerm {
-    std::variant<NodeTermIntLit*, NodeTermIdent*, NodeTermParen*, NodeTermFuncCall*> var;
+    std::variant<NodeTermIntLit*, NodeTermIdent*, NodeTermParen*, NodeTermFuncCall*, NodeTermUnary*> var;
 };
 
 // One node for every binary operator; the generator switches on op.
@@ -132,6 +139,15 @@ public:
             auto termIntLit = alloc<NodeTermIntLit>();
             termIntLit->int_lit = intLit.value();
             term->var = termIntLit;
+        }
+
+        else if (peekType() == TokenType::SUB || peekType() == TokenType::BANG) {
+            auto unary = alloc<NodeTermUnary>();
+            unary->op = consume().type;
+            auto inner = parseTerm();
+            if (!inner) err("Expected expression");
+            unary->term = inner.value();
+            term->var = unary;
         }
 
         else if (tryConsume(TokenType::OPEN_PAREN)) {
