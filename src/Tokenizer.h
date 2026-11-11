@@ -28,6 +28,8 @@ enum class TokenType {
     WHILE,
     FUNC,
     PRINT,
+    BREAK,
+    CONTINUE,
     // operators
     EQUAL,
     EQEQ,
@@ -79,6 +81,8 @@ public:
             {U"ارجع", TokenType::RETURN},
             {U"دالة", TokenType::FUNC},
             {U"اطبع", TokenType::PRINT},
+            {U"توقف", TokenType::BREAK},
+            {U"استمر", TokenType::CONTINUE},
         };
 
         std::vector<Token> tokens;
