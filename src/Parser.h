@@ -423,6 +423,8 @@ private:
 
             case TokenType::GR_THAN :
             case TokenType::LS_THAN :
+            case TokenType::GR_EQ :
+            case TokenType::LS_EQ :
                 return 2;
 
             case TokenType::PLUS :

@@ -93,6 +93,8 @@ public:
             case TokenType::BANG_EQ: compare("setne"); break;
             case TokenType::LS_THAN: compare("setl"); break;
             case TokenType::GR_THAN: compare("setg"); break;
+            case TokenType::LS_EQ:   compare("setle"); break;
+            case TokenType::GR_EQ:   compare("setge"); break;
             default: break; // the parser only builds BinExpr for operators in precedence()
         }
 
