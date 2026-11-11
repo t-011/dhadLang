@@ -302,6 +302,16 @@ public:
                 gen->leave(); // m_stackSize is untouched: code after an early return still uses it
             }
 
+            void operator()(const NodeStmtJump* jump) const {
+                if (gen->m_loops.empty()) {
+                    error(jump->kw.line, "Break/continue outside of a loop");
+                }
+                const Loop& loop = gen->m_loops.back();
+                // drop whatever the loop body pushed, then jump
+                gen->out("lea rsp, [rbp - " + std::to_string(loop.stackSize * 8) + "]");
+                gen->out("jmp " + (jump->kw.type == TokenType::BREAK ? loop.endLabel : loop.startLabel));
+            }
+
             void operator()(const NodeStmtExpr* stmtExpr) const {
                 gen->genExpr(stmtExpr->expr);
                 gen->pop("rax"); // discard result
@@ -334,19 +344,20 @@ public:
             }
 
             void operator()(const NodeStmtWhile* stmtWhile) const {
-                std::string startLabel = gen->createLabel();
-                std::string endLabel = gen->createLabel();
-                gen->label(startLabel);
+                Loop loop{gen->createLabel(), gen->createLabel(), gen->m_stackSize};
+                gen->label(loop.startLabel);
 
                 gen->genExpr(stmtWhile->expr);
                 gen->pop("rax");
                 gen->out("cmp rax, 0");
-                gen->out("jz " + endLabel);
+                gen->out("jz " + loop.endLabel);
 
+                gen->m_loops.push_back(loop);
                 gen->genScope(stmtWhile->scope);
+                gen->m_loops.pop_back();
 
-                gen->out("jmp " + startLabel);
-                gen->label(endLabel);
+                gen->out("jmp " + loop.startLabel);
+                gen->label(loop.endLabel);
             }
         };
 
@@ -467,6 +478,12 @@ private:
         std::string label;
     };
 
+    struct Loop {
+        std::string startLabel;
+        std::string endLabel;
+        size_t stackSize; // m_stackSize when the loop started
+    };
+
     template<typename T>
     struct ScopeStack {
         std::vector<std::unordered_map<std::string, T>> scopes{1};
@@ -517,6 +534,7 @@ private:
     size_t m_stackSize = 0;
     ScopeStack<Var> m_vars{};
     std::unordered_map<std::string, Func> m_funcs;
+    std::vector<Loop> m_loops;
     bool m_inFunc = false;
 
     size_t labelCounter = 0;

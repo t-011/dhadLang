@@ -83,6 +83,11 @@ struct NodeStmtReturn {
     std::optional<NodeExpr*> expr;
 };
 
+// break or continue; kw.type says which
+struct NodeStmtJump {
+    Token kw;
+};
+
 // expression whose value is discarded, e.g. a call: f(1);
 struct NodeStmtExpr {
     NodeExpr* expr;
@@ -116,7 +121,7 @@ struct NodeStmtWhile {
 
 struct NodeStmt {
     std::variant<NodeStmtExit*, NodeStmtPrint*, NodeStmtLet*, NodeScope*, NodeStmtIf*, NodeStmtAssign*,
-                 NodeStmtWhile*, NodeStmtFuncDecl*, NodeStmtReturn*, NodeStmtExpr*> var;
+                 NodeStmtWhile*, NodeStmtFuncDecl*, NodeStmtReturn*, NodeStmtJump*, NodeStmtExpr*> var;
 };
 
 struct NodeProg {
@@ -304,6 +309,13 @@ public:
             }
             expect(TokenType::SEMI, "';'");
             stmt->var = stmtRet;
+        }
+
+        else if (peekType() == TokenType::BREAK || peekType() == TokenType::CONTINUE) {
+            auto stmtJump = alloc<NodeStmtJump>();
+            stmtJump->kw = consume();
+            expect(TokenType::SEMI, "';'");
+            stmt->var = stmtJump;
         }
 
         else if (auto expr = parseExpr()) {
