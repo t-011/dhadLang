@@ -25,11 +25,7 @@ public:
             }
 
             void operator()(const NodeTermIdent* ident) const {
-                if (!gen->m_vars.contains(ident->ident.val)) {
-                    std::cerr << "Undeclared Identifier: " << ident->ident.val << std::endl;
-                    exit(1);
-                }
-                gen->push(gen->varAddr(gen->m_vars.at(ident->ident.val)));
+                gen->push(gen->lookup(ident->ident));
             }
 
             void operator()(const NodeTermParen* termParen) const {
@@ -37,14 +33,13 @@ public:
             }
 
             void operator()(const NodeTermFuncCall* funcCall) const {
-                auto func = gen->m_funcs.find(funcCall->ident.val);
+                const Token& ident = funcCall->ident;
+                auto func = gen->m_funcs.find(ident.val);
                 if (func == gen->m_funcs.end()) {
-                    std::cerr << "Function not declared: " << funcCall->ident.val << "\n";
-                    exit(1);
+                    error(ident.line, "Function not declared: " + ident.val);
                 }
                 if (funcCall->args.size() != func->second.paramCount) {
-                    std::cerr << "# Args don't match function # Params: " << funcCall->ident.val << "\n";
-                    exit(1);
+                    error(ident.line, "Wrong number of arguments to " + ident.val);
                 }
 
                 for (const auto& arg : funcCall->args) {
@@ -163,9 +158,9 @@ public:
             }
 
             void operator()(const NodeStmtLet* stmtLet) const {
-                if (gen->m_vars.contains(stmtLet->ident.val)) {
-                    std::cerr << "Identifier already used: " << stmtLet->ident.val << std::endl;
-                    exit(1);
+                const Token& ident = stmtLet->ident;
+                if (gen->m_vars.contains(ident.val)) {
+                    error(ident.line, "Identifier already used: " + ident.val);
                 }
 
                 gen->genExpr(stmtLet->expr);
@@ -185,23 +180,19 @@ public:
             }
 
             void operator()(const NodeStmtAssign* stmtAssign) const {
-                if (!gen->m_vars.contains(stmtAssign->ident.val)) {
-                    std::cerr << "Identifier not declared: " << stmtAssign->ident.val << std::endl;
-                    exit(1);
-                }
                 gen->genExpr(stmtAssign->expr);
                 gen->pop("rax");
-                gen->out("mov " + gen->varAddr(gen->m_vars.at(stmtAssign->ident.val)) + ", rax");
+                // the address is rsp-relative, so look it up after the pop
+                gen->out("mov " + gen->lookup(stmtAssign->ident) + ", rax");
             }
 
             void operator()(const NodeStmtFuncDecl* funcDecl) const {
+                const Token& ident = funcDecl->ident;
                 if (!gen->m_vars.isGlobal()) {
-                    std::cerr << "Functions must be declared in global scope\n";
-                    exit(1);
+                    error(ident.line, "Functions must be declared in global scope");
                 }
-                if (gen->m_funcs.contains(funcDecl->ident.val)) {
-                    std::cerr << "Function already declared\n";
-                    exit(1);
+                if (gen->m_funcs.contains(ident.val)) {
+                    error(ident.line, "Function already declared: " + ident.val);
                 }
 
                 std::string funcLabel = "func" + gen->createLabel();
@@ -219,8 +210,7 @@ public:
                 for (size_t i = 0; i < paramCount; ++i) {
                     const Token& param = funcDecl->params[i];
                     if (gen->m_vars.back().contains(param.val)) {
-                        std::cerr << "Parameter already used\n";
-                        exit(1);
+                        error(param.line, "Parameter already used: " + param.val);
                     }
                     // copy each argument from above the return address
                     gen->out("mov rax, QWORD [rsp + " + std::to_string(paramCount * 8) + "]");
@@ -243,8 +233,7 @@ public:
 
             void operator()(const NodeStmtReturn* stmtRet) const {
                 if (!gen->m_inFunc) {
-                    std::cerr << "Return outside of function\n";
-                    exit(1);
+                    error(stmtRet->kw.line, "Return outside of function");
                 }
 
                 if (stmtRet->expr) {
@@ -363,6 +352,13 @@ private:
 
     std::string createLabel() {
         return "label" + std::to_string(labelCounter++);
+    }
+
+    std::string lookup(const Token& ident) {
+        if (!m_vars.contains(ident.val)) {
+            error(ident.line, "Undeclared identifier: " + ident.val);
+        }
+        return varAddr(m_vars.at(ident.val));
     }
 
     void retCleanup() {

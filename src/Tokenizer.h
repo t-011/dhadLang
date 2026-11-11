@@ -44,7 +44,14 @@ enum class TokenType {
 struct Token {
     TokenType type;
     std::string val;
+    int line = 0;
 };
+
+// Every compile error goes through here, so each one names its line.
+[[noreturn]] inline void error(int line, const std::string& msg) {
+    std::cerr << "line " << line << ": " << msg << std::endl;
+    exit(1);
+}
 
 
 class Tokenizer {
@@ -69,7 +76,7 @@ public:
 
         std::vector<Token> tokens;
         auto add = [&](TokenType type, std::string val = "") {
-            tokens.push_back({type, std::move(val)});
+            tokens.push_back({type, std::move(val), m_line});
         };
         // one- or two-character operator, e.g. '<' or '<='
         auto addPair = [&](char32_t next, TokenType pair, TokenType single) {
@@ -84,7 +91,11 @@ public:
         while (peek().has_value()) {
             char32_t curr = consume();
 
-            if (isAsciiSpace(curr)) {
+            if (curr == U'\n') {
+                m_line++;
+            }
+
+            else if (isAsciiSpace(curr)) {
                 continue;
             }
 
@@ -134,8 +145,7 @@ public:
                     case U'>': add(TokenType::GR_THAN); break;
                     case U'<': add(TokenType::LS_THAN); break;
                     default:
-                        std::cerr << "Invalid Syntax" << std::endl;
-                        exit(1);
+                        error(m_line, "Invalid character");
                 }
             }
         }
@@ -181,11 +191,12 @@ private:
     }
 
     static bool isAsciiSpace(char32_t c) {
-        return c == U' ' || c == U'\t' || c == U'\n' || c == U'\r' || c == U'\f' || c == U'\v';
+        return c == U' ' || c == U'\t' || c == U'\r' || c == U'\f' || c == U'\v';
     }
 
 private:
     std::u32string m_src;
     size_t m_srcLen;
     size_t m_pos = 0;
+    int m_line = 1;
 };
