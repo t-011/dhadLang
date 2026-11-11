@@ -1,0 +1,7 @@
+.git
+.vscode
+dhad
+out
+out.o
+out.asm
+test.cpp
