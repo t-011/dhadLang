@@ -5,3 +5,4 @@ out
 out.o
 out.asm
 test.cpp
+unit_tests

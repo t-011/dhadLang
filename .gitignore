@@ -5,3 +5,4 @@ out
 *.o
 out.asm
 dhad
+unit_tests
