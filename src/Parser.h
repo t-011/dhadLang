@@ -417,24 +417,30 @@ private:
     static int precedence(TokenType tk) {
 
         switch(tk) {
+            case TokenType::OR :
+                return 0;
+
+            case TokenType::AND :
+                return 1;
+
             case TokenType::EQEQ :
             case TokenType::BANG_EQ :
-                return 1;
+                return 2;
 
             case TokenType::GR_THAN :
             case TokenType::LS_THAN :
             case TokenType::GR_EQ :
             case TokenType::LS_EQ :
-                return 2;
+                return 3;
 
             case TokenType::PLUS :
             case TokenType::SUB :
-                return 3;
+                return 4;
 
             case TokenType::MULT :
             case TokenType::DIV :
             case TokenType::MOD :
-                return 4;
+                return 5;
 
             default:
                 return -1;
