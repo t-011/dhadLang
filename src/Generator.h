@@ -245,7 +245,7 @@ public:
                 size_t paramCount = funcDecl->params.size();
                 for (size_t i = 0; i < paramCount; ++i) {
                     const auto& param = funcDecl->params.at(i);
-                    if (gen->m_vars.back().contains(param->ident.val)) {
+                    if (gen->m_vars.back().contains(param.val)) {
                         std::cerr << "Parameter already used\n";
                         exit(1);
                     }
@@ -253,7 +253,7 @@ public:
                     gen->m_output << "   mov rax, QWORD [rsp + " << (paramCount * 8) << "]\n";
                     gen->push("rax");
 
-                    gen->m_vars.insert({param->ident.val, Var{ .m_stackLoc = gen->m_stackSize }});
+                    gen->m_vars.insert({param.val, Var{ .m_stackLoc = gen->m_stackSize }});
                 }
 
                 gen->genScope(funcDecl->scope);
