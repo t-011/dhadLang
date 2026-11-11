@@ -204,11 +204,18 @@ Routing every value through the stack keeps the generator short and easy to chec
 ## Tests
 
 ```bash
-make test          # on Linux x86-64
-make docker-test   # anywhere with Docker
+make unit          # tokenizer and parser unit tests, on any OS
+make test          # unit tests plus end-to-end tests, on Linux x86-64
+make docker-test   # everything, anywhere with Docker
 ```
 
-Each `tests/name_N.dhad` must exit with code `N`. If `tests/name_N.txt` exists, the program's output must match it. GitHub Actions runs the suite on every push and pull request.
+There are three kinds of test:
+
+- **Unit tests** (`tests/unit.cpp`) check the tokenizer and parser on their own. Parser tests print the tree as an S-expression, so `1 + 2 * 3` must parse to `(+ 1 (* 2 3))`.
+- **Program tests:** each `tests/name_N.dhad` is compiled and run, and must exit with code `N`. If `tests/name_N.txt` exists, the program's output must match it.
+- **Error tests:** each `tests/errors/*.dhad` must fail to compile with the message on its first line, for example `# expect: line 2: Expected ';'`.
+
+GitHub Actions runs all of them on every push and pull request.
 
 ## Credits
 
