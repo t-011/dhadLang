@@ -1,0 +1,9 @@
+دالة هو(س) {
+    ارجع س;
+}
+
+{
+    دع ا = 5;
+    دع ب = هو(2);   # a call used to shift every later local by one slot
+    خروج(ا + ب);
+}

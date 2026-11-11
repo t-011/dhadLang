@@ -62,6 +62,7 @@ public:
 
                 gen->m_output << "   call " << func.label << "\n";
                 gen->m_output << "   add rsp, " << (funcCall->args.size() * 8) << "\n";
+                gen->m_stackSize -= funcCall->args.size(); // the caller popped the arguments
                 gen->push("rax");
             }
         };
