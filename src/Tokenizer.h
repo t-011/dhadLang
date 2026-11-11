@@ -35,6 +35,8 @@ enum class TokenType {
     BANG_EQ,
     GR_THAN,
     LS_THAN,
+    GR_EQ,
+    LS_EQ,
     PLUS,
     SUB,
     MULT,
@@ -144,8 +146,8 @@ public:
                     case U'%': add(TokenType::MOD); break;
                     case U'=': addPair(U'=', TokenType::EQEQ, TokenType::EQUAL); break;
                     case U'!': addPair(U'=', TokenType::BANG_EQ, TokenType::BANG); break;
-                    case U'>': add(TokenType::GR_THAN); break;
-                    case U'<': add(TokenType::LS_THAN); break;
+                    case U'>': addPair(U'=', TokenType::GR_EQ, TokenType::GR_THAN); break;
+                    case U'<': addPair(U'=', TokenType::LS_EQ, TokenType::LS_THAN); break;
                     default:
                         error(m_line, "Invalid character");
                 }
