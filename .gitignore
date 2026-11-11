@@ -3,4 +3,5 @@
 test.cpp
 out
 *.o
+out.asm
 dhad

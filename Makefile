@@ -4,4 +4,4 @@ dhad : src/main.cpp
 
 
 clean:
-	rm dhad
+	rm -f dhad out out.o out.asm
