@@ -1,5 +1,7 @@
 #pragma once
 
+#include <array>
+#include <cstdint>
 #include <sstream>
 #include <unordered_map>
 #include <variant>
