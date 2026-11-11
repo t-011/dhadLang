@@ -1,0 +1,2 @@
+# expect: line 2: Return outside of function
+ارجع 1;

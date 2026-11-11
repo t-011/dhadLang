@@ -1,0 +1,3 @@
+# expect: line 2: Expected ';'
+دع ا = 1
+دع ب = 2;

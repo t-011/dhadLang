@@ -1,0 +1,3 @@
+# expect: line 3: Expected '}'
+بينما (1) {
+    دع ا = 1;

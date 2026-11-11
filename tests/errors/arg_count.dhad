@@ -1,0 +1,5 @@
+# expect: line 5: Wrong number of arguments to ف
+دالة ف(س) {
+    ارجع س;
+}
+خروج(ف(1, 2));
