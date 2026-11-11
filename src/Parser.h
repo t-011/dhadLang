@@ -68,6 +68,7 @@ struct NodeStmtFuncDecl {
 };
 
 struct NodeStmtReturn {
+    Token kw;
     std::optional<NodeExpr*> expr;
 };
 
@@ -268,8 +269,9 @@ public:
             stmt->var = stmtWhile;
         }
 
-        else if (tryConsume(TokenType::RETURN)) {
+        else if (auto kw = tryConsume(TokenType::RETURN)) {
             auto stmtRet = alloc<NodeStmtReturn>();
+            stmtRet->kw = kw.value();
             if (peekType() != TokenType::SEMI) {
                 stmtRet->expr = needExpr();
             }
@@ -356,16 +358,19 @@ private:
         return {};
     }
 
+    // "Expected X" points at the last good token, i.e. where X is missing
     Token expect(TokenType type, const std::string& what) {
         if (peekType() == type) {
             return consume();
         }
-        err("Expected " + what);
+        error(m_pos > 0 ? m_tokens.at(m_pos - 1).line : 1, "Expected " + what);
     }
 
     [[noreturn]] void err(const std::string& msg) const {
-        std::cerr << msg << std::endl;
-        exit(1);
+        int line = 1;
+        if (peek()) line = peek()->line;
+        else if (!m_tokens.empty()) line = m_tokens.back().line;
+        error(line, msg);
     }
 
     NodeExpr* needExpr() {
