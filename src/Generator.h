@@ -157,6 +157,12 @@ public:
                 gen->out("syscall");
             }
 
+            void operator()(const NodeStmtPrint* stmtPrint) const {
+                gen->genExpr(stmtPrint->expr);
+                gen->pop("rax");
+                gen->out("call dhad_print");
+            }
+
             void operator()(const NodeStmtLet* stmtLet) const {
                 const Token& ident = stmtLet->ident;
                 if (gen->m_vars.contains(ident.val)) {
@@ -311,7 +317,7 @@ public:
 
         asmOut << "section .bss\n" << m_bss.str() << "\n";
 
-        asmOut << "section .text\n" << m_funcText.str() << "\n";
+        asmOut << "section .text\n" << PRINT_ROUTINE << "\n" << m_funcText.str() << "\n";
 
         asmOut << "global _start\n_start:\n"
                << m_text.str()
@@ -323,6 +329,38 @@ public:
     }
 
 private:
+
+    // prints rax as a signed decimal plus '\n' with the write syscall (no libc)
+    static constexpr const char* PRINT_ROUTINE = R"(dhad_print:
+   sub rsp, 32
+   lea rsi, [rsp + 31]
+   mov byte [rsi], 10
+   mov r8, rax
+   test rax, rax
+   jns .digits
+   neg rax
+.digits:
+   xor rdx, rdx
+   mov rcx, 10
+   div rcx
+   add dl, '0'
+   dec rsi
+   mov [rsi], dl
+   test rax, rax
+   jnz .digits
+   test r8, r8
+   jns .write
+   dec rsi
+   mov byte [rsi], '-'
+.write:
+   mov rax, 1
+   mov rdi, 1
+   lea rdx, [rsp + 32]
+   sub rdx, rsi
+   syscall
+   add rsp, 32
+   ret
+)";
 
     void out(const std::string& line) {
         *m_out << "   " << line << "\n";
