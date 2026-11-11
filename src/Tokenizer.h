@@ -35,7 +35,8 @@ enum class TokenType {
     BANG,
     BANG_EQ,
     GR_THAN,
-    LS_THAN
+    LS_THAN,
+    FUNC
 };
 
 struct Token {
@@ -95,6 +96,9 @@ public:
                 }
                 else if (buffer == U"ارجع") {
                     tokens.push_back({TokenType::RETURN});
+                }
+                else if (buffer == U"دالة") {
+                    tokens.push_back({TokenType::FUNC});
                 }
                 else {
                     tokens.push_back({TokenType::IDENT, to_utf8(buffer)});

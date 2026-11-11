@@ -146,8 +146,12 @@ struct NodeStmtWhile {
     NodeScope* scope;
 };
 
+struct NodeStmtExpr {
+    NodeExpr* expr;
+};
+
 struct NodeStmt {
-    std::variant<NodeStmtExit*, NodeStmtLet*, NodeScope*, NodeStmtIf*, NodeStmtAssign*, NodeStmtWhile*, NodeStmtFuncDecl*, NodeStmtReturn*> var;
+    std::variant<NodeStmtExit*, NodeStmtLet*, NodeScope*, NodeStmtIf*, NodeStmtAssign*, NodeStmtWhile*, NodeStmtFuncDecl*, NodeStmtReturn*, NodeStmtExpr*> var;
 };
 
 struct NodeProg {
@@ -403,11 +407,11 @@ public:
             return stmt;
         }
 
-        else if (peek().has_value() && peek().value().type == TokenType::IDENT && 
-                 peek(1).has_value() && peek(1).value().type == TokenType::OPEN_PAREN) {
+        else if (tryConsume(TokenType::FUNC)) {
 
             auto funcDecl = m_allocator.alloc<NodeStmtFuncDecl>();
-            funcDecl->ident = consume(); consume(); // '('
+            funcDecl->ident = tryConsumeErr(TokenType::IDENT, "Expected function name").value();
+            tryConsumeErr(TokenType::OPEN_PAREN, "Expected '('");
 
             while (peek().has_value() && peek().value().type != TokenType::CLOSE_PAREN) {
                 auto funcParam = m_allocator.alloc<NodeFuncParam>();
@@ -522,6 +526,18 @@ public:
 
             NodeStmt* stmt = m_allocator.alloc<NodeStmt>();
             stmt->var = stmtRet;
+            return stmt;
+        }
+
+        // expression statement, e.g. a call whose result is discarded: f(1);
+        else if (auto expr = parseExpr()) {
+            tryConsumeErr(TokenType::SEMI, "Expected ';'");
+
+            auto stmtExpr = m_allocator.alloc<NodeStmtExpr>();
+            stmtExpr->expr = expr.value();
+
+            NodeStmt* stmt = m_allocator.alloc<NodeStmt>();
+            stmt->var = stmtExpr;
             return stmt;
         }
 
