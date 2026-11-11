@@ -515,7 +515,10 @@ public:
         else if (tryConsume(TokenType::RETURN)) {
             auto stmtRet = m_allocator.alloc<NodeStmtReturn>();
 
-            if (auto expr = parseExpr()) {
+            if (peek().has_value() && peek().value().type == TokenType::SEMI) {
+                // bare ارجع; returns 0
+            }
+            else if (auto expr = parseExpr()) {
                 stmtRet->expr = expr.value();
             }
             else {
