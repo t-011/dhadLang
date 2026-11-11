@@ -3,6 +3,7 @@
 #include <fstream>
 #include <locale>
 #include <codecvt>
+#include <stdexcept>
 
 #include "Tokenizer.h"
 #include "Parser.h"
@@ -19,7 +20,16 @@ int main(int argc, char* argv[]) {
 
     std::string fileName = argv[1];
 
-    std::u32string contents = readUtf8FileToU32(fileName);
+    std::u32string contents;
+    try {
+        contents = readUtf8FileToU32(fileName);
+    } catch (const std::range_error&) { // thrown by wstring_convert on bad bytes
+        std::cerr << fileName << ": not valid UTF-8" << std::endl;
+        return 1;
+    } catch (const std::exception& e) {
+        std::cerr << fileName << ": " << e.what() << std::endl;
+        return 1;
+    }
 
     Tokenizer tk(contents, contents.size());
     auto tokens = tk.tokenize(); 
