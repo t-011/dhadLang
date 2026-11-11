@@ -68,12 +68,13 @@ public:
 
     [[nodiscard]] std::vector<Token> tokenize() {
 
+        // Matched after normalize(), so اذا/إذا and والا/وإلا both work.
         static const std::unordered_map<std::u32string, TokenType> keywords = {
             {U"خروج", TokenType::EXIT},
             {U"دع", TokenType::LET},
             {U"اذا", TokenType::IF_},
             {U"واذا", TokenType::ELIF},
-            {U"وإلا", TokenType::ELSE_},
+            {U"والا", TokenType::ELSE_},
             {U"بينما", TokenType::WHILE},
             {U"ارجع", TokenType::RETURN},
             {U"دالة", TokenType::FUNC},
@@ -125,7 +126,7 @@ public:
                     word.push_back(consume());
                 }
 
-                auto kw = keywords.find(word);
+                auto kw = keywords.find(normalize(word));
                 if (kw != keywords.end()) {
                     add(kw->second);
                 } else {
@@ -196,6 +197,14 @@ private:
         if (c >= U'0' && c <= U'9') return static_cast<int>(c - U'0');
         if (c >= 0x0660 && c <= 0x0669) return static_cast<int>(c - 0x0660);
         return -1;
+    }
+
+    // أ إ آ -> ا, so keywords match with or without hamza
+    static std::u32string normalize(std::u32string word) {
+        for (auto& c : word) {
+            if (c == U'أ' || c == U'إ' || c == U'آ') c = U'ا';
+        }
+        return word;
     }
 
     std::string to_utf8(const std::u32string& in) {
