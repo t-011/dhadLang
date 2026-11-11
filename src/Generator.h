@@ -130,6 +130,7 @@ public:
                 gen->pop("rbx");
                 gen->pop("rax");
 
+                gen->m_output << "   cqo\n";
                 gen->m_output << "   idiv rbx\n";
                 
                 gen->push("rdx");
