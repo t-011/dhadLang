@@ -35,16 +35,10 @@ int main(int argc, char* argv[]) {
     auto tokens = tk.tokenize(); 
 
     Parser p(std::move(tokens));
-    auto prog = p.parseProg();
-
-    if (!prog.has_value()) {
-        std::cerr << "Invalid program" << std::endl;
-        exit(1);
-    }
-
+    NodeProg prog = p.parseProg(); // parse errors exit with a line number
 
     {
-        Generator g(prog.value());
+        Generator g(std::move(prog));
         std::ofstream file("out.asm");
         file << g.genProg();
     }
